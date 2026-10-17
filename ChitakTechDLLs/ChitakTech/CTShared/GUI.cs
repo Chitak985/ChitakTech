@@ -8,25 +8,6 @@ namespace ChitakTech
 {
     public partial class CTShared
     {
-        private void OnDepositsLauncherReady()
-        {
-            if (_depositsToolbarButton != null || ApplicationLauncher.Instance == null
-                || _depositsButtonTexture == null) return;
-            _depositsToolbarButton = ApplicationLauncher.Instance.AddModApplication(
-                () => _depositsVisible = true,
-                () => _depositsVisible = false,
-                null, null, null, null,
-                ApplicationLauncher.AppScenes.FLIGHT,
-                _depositsButtonTexture
-            );
-        }
-
-        private void OnDepositsLauncherDestroyed()
-        {
-            _depositsToolbarButton = null;
-            _depositsVisible = false;
-        }
-
         private void OnGameSceneLoadRequested(GameScenes destination)
         {
             CloseTransientWindows();
@@ -213,7 +194,7 @@ namespace ChitakTech
                     _recipeSettingsTitle,
                     HighLogic.Skin.window);
 
-            if (_depositsVisible)
+            if (DepositFinderEnabled && _depositsVisible)
                 _depositsRect = GUILayout.Window(
                     _depositsWindowId,
                     _depositsRect,

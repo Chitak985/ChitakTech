@@ -155,6 +155,7 @@
     <Compile Include="CTShared\ParameterComparison.cs" />
     <Compile Include="CTShared\ConfigHelpers.cs" />
     <Compile Include="CTShared\GUI.cs" />
+    <Compile Include="CTShared\DepositFinder.cs" />
     <Compile Include="CTShared\ContentsGUI.cs" />
     <Compile Include="CTShared\Logging.cs" />
     <Compile Include="CTShared\Main.cs" />

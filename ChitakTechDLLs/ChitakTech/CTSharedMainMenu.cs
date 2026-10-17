@@ -43,6 +43,8 @@ namespace ChitakTech
                 return;
             }
 
+            shared.BeginMainMenuLoading();
+
             // CTShared persists across scenes. Always reload into fresh collections if the main
             // menu is entered again, rather than accumulating duplicate data.
             shared.surfaceDeposits.Clear();
@@ -59,7 +61,8 @@ namespace ChitakTech
             // Configuration
             ConfigNode settings = GameDatabase.Instance.GetConfigNode("ChitakTechSettings");
             shared.constructionConsumptionEnabled = CTShared.GetStrValueFromCFG(settings, "ConstructionConsumptionEnabled", "false") == "true";
-            shared.depositFinder = CTShared.GetStrValueFromCFG(settings, "DepositFinder", "false") == "true";
+            shared.depositFinder = bool.TryParse(settings?.GetValue("DepositFinder"), out bool finderEnabled)
+                && finderEnabled;
 
             // ChitakTechISRU recipes
             foreach (ConfigNode node in GameDatabase.Instance.GetConfigNodes("CHITAKTECHISRU_RECIPE"))
@@ -111,6 +114,7 @@ namespace ChitakTech
                 !recipe.ValidateReferences(shared.materialList, "CTSharedMainMenu/Awake"));
             CTShared.Log("Created " + shared.batchRecipeList.Count.ToString()
                 + " valid ChitakTechISRU recipes.", "CTSharedMainMenu/Awake");
+            shared.CompleteMainMenuLoading();
         }
 
         public void OnDestroy()

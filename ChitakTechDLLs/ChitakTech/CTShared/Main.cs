@@ -15,7 +15,7 @@ namespace ChitakTech
         {
             if (_instance != null)
             {
-                CTShared.LogError("Another instance of CTShared was found, self destructing...", "CTShared/Awake");
+                LogError("Another instance of CTShared was found, self destructing...", "CTShared/Awake");
                 Destroy(gameObject);
                 return;
             }
@@ -47,7 +47,7 @@ namespace ChitakTech
 
             ResetConstructionResourcesToDefaults();
 
-            CTShared.Log("CTShared initialized.", "CTShared/Awake");
+            Log("CTShared initialized.", "CTShared/Awake");
         }
 
         public static Dictionary<string, double> CreateStartingConstructionResourceLedger()
@@ -76,8 +76,7 @@ namespace ChitakTech
             GameEvents.onGUIApplicationLauncherReady.Remove(OnDepositsLauncherReady);
             GameEvents.onGUIApplicationLauncherDestroyed.Remove(OnDepositsLauncherDestroyed);
             GameEvents.onGameSceneLoadRequested.Remove(OnGameSceneLoadRequested);
-            if (_depositsToolbarButton != null && ApplicationLauncher.Instance != null)
-                ApplicationLauncher.Instance.RemoveModApplication(_depositsToolbarButton);
+            RemoveDepositFinderButton();
             CloseTransientWindows();
             DestroyDepositRenderers();
             if (_depositsButtonTexture != null)
