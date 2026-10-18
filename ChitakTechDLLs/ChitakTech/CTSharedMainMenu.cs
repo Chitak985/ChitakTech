@@ -4,20 +4,15 @@ using UnityEngine;
 namespace ChitakTech
 {
     /// <summary>
-    /// A version of <see cref="CTShared"/> that loads during the MainMenu scene.
-    /// Mainly loads many top-level configs.
+    /// A continuation of <see cref="CTShared"/> that loads during the MainMenu scene.
+    /// Loads top-level configs in the main menu and deposits every save.
     /// </summary>
     [KSPAddon(KSPAddon.Startup.MainMenu, true)]
     public class CTSharedMainMenu : MonoBehaviour
     {
-        /// <summary>
-        /// The private instance set in MainMenu Awake().
-        /// </summary>
+        /// <summary> The private instance set in MainMenu Awake() </summary>
         private static CTSharedMainMenu _instance;
-        
-        /// <summary>
-        /// The instance set in MainMenu Awake().
-        /// </summary>
+        /// <summary> The instance set in MainMenu Awake()  </summary>
         public static CTSharedMainMenu Instance => _instance;
 
         /// <summary>
@@ -28,6 +23,7 @@ namespace ChitakTech
 
         public void Awake()
         {
+            // Check for duplicate instance
             if (_instance != null)
             {
                 CTShared.LogError("Another instance of CTSharedMainMenu was found, self destructing...", "CTSharedMainMenu/Awake");
@@ -36,6 +32,7 @@ namespace ChitakTech
             }
             _instance = this;
 
+            // Get CTShared instance
             shared = CTShared.Instance;
             if (shared == null)
             {
@@ -45,8 +42,7 @@ namespace ChitakTech
 
             shared.BeginMainMenuLoading();
 
-            // CTShared persists across scenes. Always reload into fresh collections if the main
-            // menu is entered again, rather than accumulating duplicate data.
+            // Clear everything since CTShared may be loaded again and old data would be left over
             shared.surfaceDeposits.Clear();
             shared.undergroundDeposits.Clear();
             shared.batchRecipeList.Clear();
@@ -126,7 +122,7 @@ namespace ChitakTech
         /// Rebuilds the procedural deposit set from configuration. This is intentionally
         /// reusable by the per-save scenario so two new saves created during one KSP process
         /// receive independent random locations instead of clones of the main-menu roll.
-        /// Not using the kinst variable as this is a static method and
+        /// Not using <see cref="shared"/> variable as this is a static method and
         /// is called in DepositPersistence.cs/TryApplyLoadedDeposits.
         /// </summary>
         internal static bool GenerateConfiguredDeposits(CTShared shared)
@@ -141,40 +137,44 @@ namespace ChitakTech
             shared.surfaceDeposits.Clear();
             shared.undergroundDeposits.Clear();
 
+            // Load a deposit from each deposit config node
             foreach (ConfigNode node in GameDatabase.Instance.GetConfigNodes("CHITAKTECH_RESOURCE_DEPOSIT"))
             {
+                // Load mandatory values
                 string resource = node.GetValue("resource")?.Trim();
                 string type = node.GetValue("type")?.Trim();
                 string body = node.GetValue("body")?.Trim();
 
-                // Resource error checking
+                // Resource value error checking
                 string resoError;
                 bool resoErr = true;
 
                 if (string.IsNullOrEmpty(resource))
                     resoError = "MISSING";
+                else if (PartResourceLibrary.Instance.GetDefinition(resource) == null)
+                    resoError = "INVALID (" + resource + ")";
                 else
                 {
-                    resoError = "Present (" + resource + ")";
+                    resoError = "Valid (" + resource + ")";
                     resoErr = false;
                 }
 
-                // Type error checking
+                // Type value error checking
                 string typeError;
                 bool typeErr = true;
 
                 if (string.IsNullOrEmpty(type))
                     typeError = "MISSING";
                 else if (type != "surface" && type != "surfaceOnly" && type != "underground")
-                    typeError = "INVALID ("+type+")";
+                    typeError = "INVALID (" + type + ")";
                 else
                 {
-                    typeError = "Valid ("+type+")";
+                    typeError = "Valid (" + type + ")";
                     typeErr = false;
                 }
 
 
-                // Body error checking
+                // Body value error checking
                 string bodyError;
                 bool bodyErr = true;
 
@@ -215,8 +215,7 @@ namespace ChitakTech
                     || !CTShared.TryGetFloatValueFromCFG(node, "maxRadius", 20f, out float maxRadius)
                     || !CTShared.TryGetFloatValueFromCFG(node, "depthUnderground", 50f, out float depthUnderground))
                 {
-                    CTShared.LogError("Deposit \"" + resource
-                        + "\" has a malformed numeric setting and was not loaded.",
+                    CTShared.LogError($"Deposit \"{resource}\" has a malformed numeric setting and was not loaded.",
                         "CTSharedMainMenu/GenerateConfiguredDeposits");
                     continue;
                 }
@@ -225,36 +224,23 @@ namespace ChitakTech
 
                 if (minAmount < 0 || maxAmount < minAmount)
                 {
-                    CTShared.LogError("Deposit \"" + resource + "\" has invalid amount range ["
-                        + minAmount + ", " + maxAmount + "] and was not loaded.",
+                    CTShared.LogError($"Deposit \"{resource}\" has invalid amount range " +
+                        $"[{minAmount}, {maxAmount}] and was not loaded.",
                         "CTSharedMainMenu/GenerateConfiguredDeposits");
                     continue;
                 }
                 if (!CTShared.IsFinitePositive(minRadius) || !CTShared.IsFinitePositive(maxRadius)
                     || maxRadius < minRadius)
                 {
-                    CTShared.LogError("Deposit \"" + resource + "\" has invalid radius range ["
-                        + minRadius + ", " + maxRadius + "] and was not loaded.",
+                    CTShared.LogError($"Deposit \"{resource}\" has invalid radius range " +
+                        $"[{minRadius}, {maxRadius}] and was not loaded.",
                         "CTSharedMainMenu/GenerateConfiguredDeposits");
-                    continue;
-                }
-                if (FlightGlobals.GetBodyByName(body) == null)
-                {
-                    CTShared.LogError("Deposit \"" + resource + "\" refers to unknown body \""
-                        + body + "\" and was not loaded.",
-                        "CTSharedMainMenu/GenerateConfiguredDeposits");
-                    continue;
-                }
-                if (PartResourceLibrary.Instance.GetDefinition(resource) == null)
-                {
-                    CTShared.LogError("Deposit refers to unknown resource \"" + resource
-                        + "\" and was not loaded.", "CTSharedMainMenu/GenerateConfiguredDeposits");
                     continue;
                 }
                 if (biome != null && !CTShared.GetBiomeNames(body).Contains(biome))
                 {
-                    CTShared.LogError("Deposit \"" + resource + "\" refers to unknown biome \""
-                        + biome + "\" on \"" + body + "\" and was not loaded.",
+                    CTShared.LogError($"Deposit \"{resource}\" refers to unknown " +
+                        $"biome \"{biome}\" on \"{body}\" and was not loaded.",
                         "CTSharedMainMenu/GenerateConfiguredDeposits");
                     continue;
                 }
@@ -275,8 +261,7 @@ namespace ChitakTech
                         || !CTShared.IsFiniteNonNegative(undergroundStart + depthUnderground)
                         || PartResourceLibrary.Instance.GetDefinition(resource2) == null)
                     {
-                        CTShared.LogError("Surface deposit \"" + resource
-                            + "\" has invalid resource2 or depth values and was not loaded.",
+                        CTShared.LogError($"Surface deposit \"{resource}\" has invalid resource2 or depth values and was not loaded.",
                             "CTSharedMainMenu/GenerateConfiguredDeposits");
                         continue;
                     }
@@ -296,8 +281,7 @@ namespace ChitakTech
                     if (!CTShared.TryGetFloatValueFromCFG(node, "depthSurface", 10f, out float surfaceDepth)
                         || !CTShared.IsFinitePositive(surfaceDepth))
                     {
-                        CTShared.LogError("Surface-only deposit \"" + resource
-                            + "\" has invalid depthSurface and was not loaded.",
+                        CTShared.LogError($"Surface-only deposit \"{resource}\" has invalid depthSurface and was not loaded.",
                             "CTSharedMainMenu/GenerateConfiguredDeposits");
                         continue;
                     }
@@ -314,8 +298,7 @@ namespace ChitakTech
                         || !CTShared.IsFinitePositive(depthUnderground)
                         || !CTShared.IsFiniteNonNegative(undergroundStart + depthUnderground))
                     {
-                        CTShared.LogError("Underground deposit \"" + resource
-                            + "\" has invalid depth values and was not loaded.",
+                        CTShared.LogError($"Underground deposit \"{resource}\" has invalid depth values and was not loaded.",
                             "CTSharedMainMenu/GenerateConfiguredDeposits");
                         continue;
                     }
@@ -325,10 +308,10 @@ namespace ChitakTech
                 }
             }
 
-            CTShared.Log("Created " + shared.undergroundDeposits.Count
-                + " underground deposits.", "CTSharedMainMenu/GenerateConfiguredDeposits");
-            CTShared.Log("Created " + shared.surfaceDeposits.Count
-                + " surface deposits.", "CTSharedMainMenu/GenerateConfiguredDeposits");
+            CTShared.Log($"Created {shared.undergroundDeposits.Count} underground deposits.",
+                "CTSharedMainMenu/GenerateConfiguredDeposits");
+            CTShared.Log($"Created {shared.surfaceDeposits.Count} surface deposits.",
+                "CTSharedMainMenu/GenerateConfiguredDeposits");
             return true;
         }
     }
