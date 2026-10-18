@@ -65,8 +65,11 @@ namespace ChitakTech
         public struct RecipeSetting
         {
             public List<string> options;
+            public List<string> optionDisplayNames;
             public bool IsChoice => options != null;
             public string SelectedOption(double index) => options[(int)Clamp(index)];
+            public string SelectedOptionDisplay(double index)
+                => (optionDisplayNames ?? options)[(int)Clamp(index)];
             public string name;
             public string variable;
             public double min;

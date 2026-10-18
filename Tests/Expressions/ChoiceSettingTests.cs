@@ -32,6 +32,35 @@ internal static class ChoiceSettingTests
         Check(recipe._outputs[0].amount == 4 && recipe._recipeTime == 4, "bare numeric expression");
         Check(recipe._settings[0].IsChoice && recipe._settings[0].SelectedOption(99) == "Water", "bad choice resets to first");
         Check(recipe._settings[1].max == 250, "configured max honored");
+        Check(recipe._settings[0].SelectedOptionDisplay(1) == "Sand", "missing display list falls back to option");
+        ConfigNode WithDisplay(params string[] labels)
+        {
+            var root = Node("name", "(SETTING:resource)");
+            var display = new ConfigNode("OPTIONS_DISPLAY");
+            root.GetNodes("SETTING")[0].AddNode(display);
+            foreach (string label in labels) display.AddValue("name", label);
+            return root;
+        }
+        var labeled = new ChitakTechISRURecipe(WithDisplay("Fresh water", "Kerbin sand"), "Test");
+        Check(labeled.IsValid, "display labels accepted");
+        Check(labeled._settings[0].SelectedOptionDisplay(0) == "Fresh water"
+            && labeled._settings[0].SelectedOptionDisplay(1) == "Kerbin sand", "labels match option order");
+        Check(labeled._settings[0].SelectedOption(1) == "Sand", "labels do not change option identity");
+        var labeledSelected = labeled.ScaledCopy(2).WithSettingValues(new Dictionary<string, double> { ["resource"] = 1 });
+        Check(labeledSelected.IsValid && labeledSelected._outputs[0].resourceName == "Sand"
+            && labeledSelected._settings[0].SelectedOptionDisplay(1) == "Kerbin sand", "rebuild preserves labels and raw substitution");
+        foreach (var labels in new[] { new string[0], new[] { "Water" }, new[] { "Water", "Sand", "Extra" },
+            new[] { "Water", " " }, new[] { "Water", "(SETTING:resource)" } })
+            Check(!new ChitakTechISRURecipe(WithDisplay(labels), "Test").IsValid, "invalid display labels rejected");
+        var badDisplay = WithDisplay("Water", "Sand");
+        badDisplay.GetNodes("SETTING")[0].GetNode("OPTIONS_DISPLAY").values[0].name = "option";
+        Check(!new ChitakTechISRURecipe(badDisplay, "Test").IsValid, "display entries require name keys");
+        badDisplay = WithDisplay("Water", "Sand");
+        badDisplay.GetNodes("SETTING")[0].AddNode(new ConfigNode("OPTIONS_DISPLAY"));
+        Check(!new ChitakTechISRURecipe(badDisplay, "Test").IsValid, "duplicate display nodes rejected");
+        badDisplay = Node("name", "Water");
+        badDisplay.GetNodes("SETTING")[1].AddNode(new ConfigNode("OPTIONS_DISPLAY"));
+        Check(!new ChitakTechISRURecipe(badDisplay, "Test").IsValid, "numeric settings cannot have display lists");
         var selected = recipe.ScaledCopy(3).WithSettingValues(new Dictionary<string,double> { ["resource"] = 1, ["count"] = 5 });
         Check(selected.IsValid && selected._outputs[0].resourceName == "PrefixSandSuffix", "selected option updates parsed fields");
         Check(selected._outputs[0].amount == 30 && selected._recipeTime == 10, "rebuilding retains scale without scaling time");

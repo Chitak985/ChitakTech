@@ -301,13 +301,13 @@ namespace ChitakTech
                 if (setting.IsChoice)
                 {
                     current = setting.Clamp(current);
-                    if (GUILayout.Button(setting.name + ": " + setting.SelectedOption(current) + " ▼", HighLogic.Skin.button))
+                    if (GUILayout.Button(setting.name + ": " + setting.SelectedOptionDisplay(current) + " ▼", HighLogic.Skin.button))
                         _openRecipeSettingDropdown = _openRecipeSettingDropdown == setting.variable ? null : setting.variable;
                     if (_openRecipeSettingDropdown == setting.variable)
                     {
                         GUILayout.BeginVertical(HighLogic.Skin.box);
                         for (int option = 0; option < setting.options.Count; option++)
-                            if (GUILayout.Button(setting.options[option], HighLogic.Skin.button))
+                            if (GUILayout.Button(setting.SelectedOptionDisplay(option), HighLogic.Skin.button))
                             {
                                 _recipeSettingWorkingValues[setting.variable] = option;
                                 _openRecipeSettingDropdown = null;

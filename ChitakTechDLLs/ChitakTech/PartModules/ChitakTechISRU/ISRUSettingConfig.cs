@@ -43,10 +43,24 @@ namespace ChitakTech
                     if (entry.GetNodes("OPTIONS").Length != 1 || options.Count == 0
                         || options.Any(string.IsNullOrEmpty) || options.Any(ContainsSettingValue))
                     { valid = SettingError("SETTING " + variable + " needs one OPTIONS node with nonempty literal option values."); continue; }
+                    List<string> displayNames = null;
+                    if (entry.HasNode("OPTIONS_DISPLAY"))
+                    {
+                        var displays = entry.GetNodes("OPTIONS_DISPLAY");
+                        displayNames = displays[0].GetValues("name").ToList();
+                        if (displays.Length != 1 || displayNames.Count != options.Count
+                            || displays[0].nodes.Count != 0
+                            || displays[0].values.Cast<ConfigNode.Value>().Any(value => value.name != "name")
+                            || displayNames.Any(string.IsNullOrWhiteSpace) || displayNames.Any(ContainsSettingValue))
+                        { valid = SettingError("SETTING " + variable + ": OPTIONS_DISPLAY must contain exactly one nonempty literal name per OPTIONS option, in the same order, and no other entries."); continue; }
+                    }
                     _settings.Add(new RecipeSetting { name = name, variable = variable, options = options,
+                        optionDisplayNames = displayNames,
                         min = 0, max = options.Count - 1, defaultValue = 0 });
                     continue;
                 }
+                if (entry.HasNode("OPTIONS_DISPLAY"))
+                { valid = SettingError("SETTING " + variable + ": OPTIONS_DISPLAY requires OPTIONS."); continue; }
                 bool numbers = TryReadOptionalDouble(entry, "min", 0, out double min);
                 numbers &= TryReadOptionalDouble(entry, "max", 100, out double max);
                 numbers &= TryReadOptionalDouble(entry, "mul1", 10, out double mul1);
