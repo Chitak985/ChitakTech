@@ -1,4 +1,4 @@
-<img src="https://raw.githubusercontent.com/Chitak985/khemistry/refs/heads/main/ChitakTech/Flags/Logo.png">
+<img src="https://raw.githubusercontent.com/Chitak985/ChitakTech/refs/heads/main/ChitakTech/Flags/Logo.png">
 A GregTech-like mod for KSP, it adds many resources, recipes, machines, and long and complicated processing lines. Start from primitive tools in the Primitive Age and progress further through the game, eventually obtaining your first solid rocket boosters to begin your journey to space! <br><br>
 It also has some very unique features, including but not limited to:
 
@@ -83,7 +83,7 @@ These mods are confirmed to work flawlessly with ChitakTech and need no patches 
 - **Connected Living Space (CLS)**
 
 ## Current Statistics:
-(As of 10/16/2026)
+(As of 10/18/2026)
 
 ### KSP Resources
 - 231x Alloys
