@@ -1710,7 +1710,7 @@ namespace ChitakTech
         private static readonly HashSet<string> _keyedByNameNodeKeys = new HashSet<string>
         {
             "INPUT_RESOURCE", "OUTPUT_RESOURCE", "PINPUT_RESOURCE", "INPUT_MATERIAL", "OUTPUT_MATERIAL",
-            "INPUT_CARGOPART", "OUTPUT_CARGOPART", "OUPUT_CARGOPART",
+            "INPUT_CARGOPART", "OUTPUT_CARGOPART",
             "PARALLAX_SCATTER", "SETTING", "MAINTENANCE"
         };
 
