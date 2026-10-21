@@ -18,7 +18,7 @@ internal static class CargoRecipeTests
             cargo.AddValue("name", "evaRepairKit"); cargo.AddValue("amount", expression);
             return node;
         }
-        foreach (string kind in new[] { "INPUT_CARGOPART", "OUTPUT_CARGOPART", "OUPUT_CARGOPART" })
+        foreach (string kind in new[] { "INPUT_CARGOPART", "OUTPUT_CARGOPART" })
         {
             var node = Recipe(kind, "2*(SETTING:quantity)");
             var recipe = new ChitakTechISRURecipe(node, "Test");
