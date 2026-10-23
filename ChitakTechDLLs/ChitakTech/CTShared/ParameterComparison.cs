@@ -45,7 +45,7 @@ namespace ChitakTech
                 return pv < cv;
             }
 
-            // Exact value match — works for anything, numeric or not.
+            // Exact value match, works for anything
             return paramValue == comparison;
         }
 

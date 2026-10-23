@@ -110,15 +110,6 @@ namespace ChitakTech
         private static bool CanAcceptResource(ChitakTechResourceNetwork.Endpoint resource)
             => resource != null && CTShared.IsFinite(resource.space) && resource.space > 0.0;
 
-        private static bool HasUsableAmount(PartResource resource)
-            => resource != null && CTShared.IsFinite(resource.amount) && resource.amount > 0.0;
-
-        ///<summary>Can the provided <see cref="PartResource"/> be accepted?</summary>
-        private static bool CanAcceptResource(PartResource resource)
-            => resource != null && CTShared.IsFinite(resource.amount) && resource.amount >= 0.0
-                && CTShared.IsFinite(resource.maxAmount) && resource.maxAmount >= 0.0
-                && resource.amount < resource.maxAmount;
-
         private bool IsStoredPartCurrent(StoredPart stored)
         {
             if (_inventory == null || stored == null) return false;
@@ -241,16 +232,14 @@ namespace ChitakTech
                 ConfigNode suitNode = moduleNode.GetNode("SUIT_CELL");
                 _suitCellMaxAmount = CTShared.GetFloatValueFromCFG(suitNode, "maxAmount", 0f);
                 _suitCellTransferDistance = CTShared.GetFloatValueFromCFG(suitNode, "transferDistance", 10f);
-                if (float.IsNaN(_suitCellMaxAmount) || float.IsInfinity(_suitCellMaxAmount)
-                    || _suitCellMaxAmount <= 0f)
+                if (!CTShared.IsFinitePositive(_suitCellMaxAmount))
                 {
                     CTShared.LogError("Part \"" + part.name
                         + "\" has a SUIT_CELL with invalid maxAmount; the suit cell was disabled.",
                         "ChitakTechKerbal/LoadConfigFromPartInfo");
                     _suitCellMaxAmount = 0f;
                 }
-                if (float.IsNaN(_suitCellTransferDistance) || float.IsInfinity(_suitCellTransferDistance)
-                    || _suitCellTransferDistance < 0f)
+                if (!CTShared.IsFiniteNonNegative(_suitCellTransferDistance))
                 {
                     CTShared.LogError("Part \"" + part.name
                         + "\" has a negative SUIT_CELL transferDistance; using 10.",
@@ -275,17 +264,14 @@ namespace ChitakTech
                 ConfigNode matSuitNode = moduleNode.GetNode("MATERIAL_SUIT_CELL");
                 _materialSuitCellVolume = CTShared.GetFloatValueFromCFG(matSuitNode, "volume", 0f);
                 _materialSuitCellTransferDistance = CTShared.GetFloatValueFromCFG(matSuitNode, "transferDistance", 2f);
-                if (float.IsNaN(_materialSuitCellVolume) || float.IsInfinity(_materialSuitCellVolume)
-                    || _materialSuitCellVolume <= 0f)
+                if (!CTShared.IsFinitePositive(_materialSuitCellVolume))
                 {
                     CTShared.LogError("Part \"" + part.name
                         + "\" has a MATERIAL_SUIT_CELL with invalid volume; the material cell was disabled.",
                         "ChitakTechKerbal/LoadConfigFromPartInfo");
                     _materialSuitCellVolume = 0f;
                 }
-                if (float.IsNaN(_materialSuitCellTransferDistance)
-                    || float.IsInfinity(_materialSuitCellTransferDistance)
-                    || _materialSuitCellTransferDistance < 0f)
+                if (!CTShared.IsFiniteNonNegative(_materialSuitCellTransferDistance))
                 {
                     CTShared.LogError("Part \"" + part.name
                         + "\" has a negative MATERIAL_SUIT_CELL transferDistance; using 2.",
@@ -295,11 +281,12 @@ namespace ChitakTech
 
                 foreach (ConfigNode allowedNode in matSuitNode.GetNodes("ALLOWED_MATERIAL"))
                 {
-                    var allowed = new ChitakTechAllowedMaterial(allowedNode);
+                    ChitakTechAllowedMaterial allowed =
+                        new ChitakTechAllowedMaterial(allowedNode);
                     if (string.IsNullOrEmpty(allowed.name))
                     {
                         CTShared.LogError(
-                            "Part \"" + part.name + "\" has a MATERIAL_SUIT_CELL ALLOWED_MATERIAL with no name, skipping.",
+                            $"Part \"{part.name}\" has a MATERIAL_SUIT_CELL ALLOWED_MATERIAL with no name, skipping.",
                             "ChitakTechKerbal/LoadConfigFromPartInfo");
                         continue;
                     }
@@ -308,7 +295,7 @@ namespace ChitakTech
 
                 if (_materialSuitCellVolume > 0f && _materialSuitCellAllowed.Count == 0)
                     CTShared.LogError(
-                        "Part \"" + part.name + "\" has a MATERIAL_SUIT_CELL with no valid ALLOWED_MATERIAL entries — nothing will ever be accepted.",
+                        $"Part \"{part.name}\" has a MATERIAL_SUIT_CELL with no valid ALLOWED_MATERIAL entries - nothing will ever be accepted.",
                         "ChitakTechKerbal/LoadConfigFromPartInfo");
             }
 

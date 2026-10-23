@@ -32,8 +32,16 @@ namespace ChitakTech
         /// </summary>
         /// <param name="value">The float to check</param>
         /// <returns>If the float is finite (not NaN or infinite)</returns>
-        public static bool IsFiniteF(float value)
+        public static bool IsFinite(float value)
             => !float.IsNaN(value) && !float.IsInfinity(value);
+
+        /// <summary>
+        /// Check if the double is finite (not NaN or infinite) and isn't negative.
+        /// </summary>
+        /// <param name="value">The double to check</param>
+        /// <returns>If the double is finite (not NaN or infinite) and isn't negative.</returns>
+        public static bool IsFiniteNonNegative(double value)
+            => IsFinite(value) && value >= 0f;
 
         /// <summary>
         /// Check if the float is finite (not NaN or infinite) and isn't negative.
@@ -41,7 +49,15 @@ namespace ChitakTech
         /// <param name="value">The float to check</param>
         /// <returns>If the float is finite (not NaN or infinite) and isn't negative.</returns>
         public static bool IsFiniteNonNegative(float value)
-            => IsFiniteF(value) && value >= 0f;
+            => IsFinite(value) && value >= 0f;
+
+        /// <summary>
+        /// Check if the double is finite (not NaN or infinite) and is positive.
+        /// </summary>
+        /// <param name="value">The double to check</param>
+        /// <returns>If the double is finite (not NaN or infinite) and is negative.</returns>
+        public static bool IsFinitePositive(double value)
+            => IsFinite(value) && value > 0f;
 
         /// <summary>
         /// Check if the float is finite (not NaN or infinite) and is positive.
@@ -49,7 +65,7 @@ namespace ChitakTech
         /// <param name="value">The float to check</param>
         /// <returns>If the float is finite (not NaN or infinite) and is negative.</returns>
         public static bool IsFinitePositive(float value)
-            => IsFiniteF(value) && value > 0f;
+            => IsFinite(value) && value > 0f;
 
         /// <summary>
         /// Returns a biome name using a latitude-longitude position on a CelestialBody.

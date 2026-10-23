@@ -344,14 +344,14 @@ namespace ChitakTech
                 return;
             }
 			
-            if (!CTShared.IsFiniteF(maxInputRate))
+            if (!CTShared.IsFinite(maxInputRate))
             {
                 CTShared.LogError($"Invalid input transfer rate! ({maxInputRate})",
                     "ChitakTechStorage/LoadConfigFromPartInfo");
                 _fatalConfigError = true;
                 return;
             }
-            if (!CTShared.IsFiniteF(maxOutputRate))
+            if (!CTShared.IsFinite(maxOutputRate))
             {
                 CTShared.LogError($"Invalid output transfer rate! ({maxOutputRate})",
                     "ChitakTechStorage/LoadConfigFromPartInfo");
