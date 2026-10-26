@@ -27,11 +27,10 @@ namespace ChitakTech
             out ChitakTechISRURecipe.ResourceInputMaterial requirement)
         {
             requirement = default;
-            string context = "ChitakTechPart/OnLoad";
             if (node == null)
             {
                 CTShared.LogError("Part \"" + partName
-                    + "\" has a null MATERIAL_COST node; construction will be blocked.", context);
+                    + "\" has a null MATERIAL_COST node; construction will be blocked.", "ChitakTechPart/OnLoad");
                 return false;
             }
 
@@ -39,7 +38,7 @@ namespace ChitakTech
             {
                 CTShared.LogError("Part \"" + partName
                     + "\" has a MATERIAL_COST with an id. MATERIAL_COST does not support ids; "
-                    + "construction will be blocked.", context);
+                    + "construction will be blocked.", "ChitakTechPart/OnLoad");
                 return false;
             }
 
@@ -53,9 +52,8 @@ namespace ChitakTech
             if (string.IsNullOrEmpty(name) || string.IsNullOrEmpty(shape)
                 || string.IsNullOrEmpty(size) || !validAmount || amount <= 0)
             {
-                CTShared.LogError("Part \"" + partName
-                    + "\" has a MATERIAL_COST that requires non-empty name/shape/size and "
-                    + "an integer amount greater than zero; construction will be blocked.", context);
+                CTShared.LogError($"Part \"{partName}\" has a MATERIAL_COST that requires non-empty name/shape/size and "
+                    + "an integer amount greater than zero; construction will be blocked.", "ChitakTechPart/OnLoad");
                 return false;
             }
 
@@ -63,15 +61,15 @@ namespace ChitakTech
             bool hasParamsAlias = node.HasNode("PARAMS");
             if (hasParameterRequirements && hasParamsAlias)
             {
-                CTShared.LogError("Part \"" + partName + "\": MATERIAL_COST \"" + name
-                    + "\" cannot contain both PARAM_REQUIREMENTS and PARAMS; construction "
-                    + "will be blocked.", context);
+                CTShared.LogError($"Part \"{partName}\": MATERIAL_COST \"{name}\" cannot contain "
+                    + "both PARAM_REQUIREMENTS and PARAMS; construction will be blocked.",
+                    "ChitakTechPart/OnLoad");
                 return false;
             }
 
             ConfigNode parameterNode = hasParameterRequirements
                 ? node.GetNode("PARAM_REQUIREMENTS") : node.GetNode("PARAMS");
-            var parameters = new List<KeyValuePair<string, string>>();
+            List<KeyValuePair<string, string>> parameters = new List<KeyValuePair<string, string>>();
             if (parameterNode != null)
                 foreach (ConfigNode.Value value in parameterNode.values)
                     parameters.Add(new KeyValuePair<string, string>(value.name, value.value));
