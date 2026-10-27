@@ -6,6 +6,14 @@ using System.Text;
 namespace ChitakTech
 {
     /// <summary>
+    /// Exception to use with a mathematical error that is intended to be caught.
+    /// </summary>
+    public class CTMathExprException : Exception
+    {
+        public CTMathExprException(string message) : base(message) { }
+    }
+    
+    /// <summary>
     /// A minimal recursive-descent arithmetic expression evaluator supporting +, -, *, /,
     /// parentheses, unary +/-, the constant PI, and the function Pow(a,b).
     /// Used for parsing mathematical expressions in config values. Config consumers expose
@@ -60,12 +68,16 @@ namespace ChitakTech
             { Evaluate = evaluate; Range = range; }
         }
 
-        // Only for functions monotone throughout their domain, with no internal domain holes.
+        /// <summary>
+        /// Used only for functions monotone throughout their domain, with no internal domain holes.
+        /// </summary>
         private static UnaryFunction Monotone(Func<double, double> function)
             => new UnaryFunction(function, value =>
                 MakeRange(function(value.Minimum), function(value.Maximum)));
 
-        // Only for functions whose extrema on any valid rectangle occur at its corners.
+        /// <summary>
+        /// Used only for functions whose extrema on any valid rectangle occur at its corners.
+        /// </summary>
         private static BinaryFunction CornerBounded(Func<double, double, double> function)
             => new BinaryFunction(function, (a, b) => EvaluateCorners(function, a, b));
 
@@ -187,7 +199,7 @@ namespace ChitakTech
             foreach (KeyValuePair<string, string> variable in vars ?? new Dictionary<string, string>())
                 expressionVars[variable.Key] = variable.Value;
 
-            try
+            try  // Throwing allowed inside this
             {
                 int pos = 0;
                 result = ParseExpr(expr, ref pos, expressionVars, randomFunction);
@@ -204,22 +216,29 @@ namespace ChitakTech
                 }
                 return true;
             }
-            catch (Exception e)
+            catch (CTMathExprException e)
             {
                 error = e.Message;
                 return false;
             }
+            catch (Exception e)
+            {
+                error = "An unknown exception occured: "+e.Message;
+                return false;
+            }
         }
 
-        /// <summary>Checks syntax/identifiers with the existing scalar parser, without
-        /// requiring dummy variable values to produce a finite numeric result.</summary>
+        /// <summary>
+        /// Checks syntax/identifiers with the existing scalar parser, without
+        /// requiring dummy variable values to produce a finite numeric result.
+        /// </summary>
         public static bool TryValidate(string expression, IEnumerable<string> variableNames, out string error)
         {
             error = null;
             if (string.IsNullOrWhiteSpace(expression)) { error = "Expression is empty."; return false; }
             var variables = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             foreach (string name in variableNames) variables[name] = "1";
-            try
+            try  // Throwing allowed inside this
             {
                 int pos = 0;
                 ParseExpr(expression, ref pos, variables, (a, b) => 0);
@@ -227,7 +246,16 @@ namespace ChitakTech
                 if (pos != expression.Length) { error = "Unexpected trailing characters at position " + pos + "."; return false; }
                 return true;
             }
-            catch (Exception ex) { error = ex.Message; return false; }
+            catch (CTMathExprException e)
+            {
+                error = e.Message;
+                return false;
+            }
+            catch (Exception e)
+            {
+                error = "An unknown exception occured: "+e.Message;
+                return false;
+            }
         }
 
         public static bool IsVariableName(string name)
@@ -243,6 +271,9 @@ namespace ChitakTech
             while (pos < s.Length && char.IsWhiteSpace(s[pos])) pos++;
         }
 
+        /// <summary>
+        /// This expression is allowed to throw exceptions and should be caught with try...catch!
+        /// </summary>
         private static double ParseExpr(string s, ref int pos, Dictionary<string, string> vars,
             Func<double, double, double> randomFunction)
         {
@@ -261,6 +292,9 @@ namespace ChitakTech
             return val;
         }
 
+        /// <summary>
+        /// This expression is allowed to throw exceptions and should be caught with try...catch!
+        /// </summary>
         private static double ParseTerm(string s, ref int pos, Dictionary<string, string> vars,
             Func<double, double, double> randomFunction)
         {
@@ -279,15 +313,29 @@ namespace ChitakTech
             return val;
         }
 
+        /// <summary>
+        /// This expression is allowed to throw exceptions and should be caught with try...catch!
+        /// </summary>
         private static double ParseFactor(string s, ref int pos, Dictionary<string, string> vars,
             Func<double, double, double> randomFunction)
         {
             SkipWhitespace(s, ref pos);
-            if (pos < s.Length && s[pos] == '-') { pos++; return -ParseFactor(s, ref pos, vars, randomFunction); }
-            if (pos < s.Length && s[pos] == '+') { pos++; return ParseFactor(s, ref pos, vars, randomFunction); }
+            if (pos < s.Length && s[pos] == '-')
+            {
+                pos++;
+                return -ParseFactor(s, ref pos, vars, randomFunction);
+            }
+            if (pos < s.Length && s[pos] == '+')
+            {
+                pos++;
+                return ParseFactor(s, ref pos, vars, randomFunction);
+            }
             return ParsePrimary(s, ref pos, vars, randomFunction);
         }
 
+        /// <summary>
+        /// This expression is allowed to throw exceptions and should be caught with try...catch!
+        /// </summary>
         private static bool Parse1ArgFunction(string ident, string s, ref int pos, Dictionary<string, string> vars, string funcName, out double result,
             Func<double, double, double> randomFunction)
         {
@@ -295,12 +343,12 @@ namespace ChitakTech
             {
                 SkipWhitespace(s, ref pos);
                 if (pos >= s.Length || s[pos] != '(')
-                    CTShared.LogFatalError($"Expected ( after {funcName} function at position {pos}! String: {s}", "CTMathExpr/Parse1ArgFunction");
+                    throw new CTMathExprException($"Expected ( after {funcName} function at position {pos}! String: {s}");
                 pos++;
                 double a = ParseExpr(s, ref pos, vars, randomFunction);
                 SkipWhitespace(s, ref pos);
                 if (pos >= s.Length || s[pos] != ')')
-                    CTShared.LogFatalError($"Expected ) closing the {funcName} function at position {pos}! String: {s}", "CTMathExpr/Parse1ArgFunction");
+                    throw new CTMathExprException($"Expected ) closing the {funcName} function at position {pos}! String: {s}");
                 pos++;
                 result = functions1Arg[funcName].Evaluate(a);
                 return true;
@@ -309,6 +357,9 @@ namespace ChitakTech
             return false;
         }
 
+        /// <summary>
+        /// This expression is allowed to throw exceptions and should be caught with try...catch!
+        /// </summary>
         private static bool Parse2ArgFunction(string ident, string s, ref int pos, Dictionary<string, string> vars, string funcName, out double result,
             Func<double, double, double> randomFunction)
         {
@@ -316,17 +367,17 @@ namespace ChitakTech
             {
                 SkipWhitespace(s, ref pos);
                 if (pos >= s.Length || s[pos] != '(')
-                    CTShared.LogFatalError($"Expected ( after {funcName} function at position {pos}! String: {s}", "CTMathExpr/Parse2ArgFunction");
+                    throw new CTMathExprException($"Expected ( after {funcName} function at position {pos}! String: {s}");
                 pos++;
                 double a = ParseExpr(s, ref pos, vars, randomFunction);
                 SkipWhitespace(s, ref pos);
                 if (pos >= s.Length || s[pos] != ',')
-                    CTShared.LogFatalError($"Expected , to separate arguments in {funcName} function at position {pos}! String: {s}", "CTMathExpr/Parse2ArgFunction");
+                    throw new CTMathExprException($"Expected , to separate arguments in {funcName} function at position {pos}! String: {s}");
                 pos++;
                 double b = ParseExpr(s, ref pos, vars, randomFunction);
                 SkipWhitespace(s, ref pos);
                 if (pos >= s.Length || s[pos] != ')')
-                    CTShared.LogFatalError($"Expected ) closing the {funcName} function at position {pos}! String: {s}", "CTMathExpr/Parse2ArgFunction");
+                    throw new CTMathExprException($"Expected ) closing the {funcName} function at position {pos}! String: {s}");
                 pos++;
                 result = string.Equals(funcName, "randf", StringComparison.OrdinalIgnoreCase)
                     && randomFunction != null
@@ -337,12 +388,15 @@ namespace ChitakTech
             return false;
         }
 
+        /// <summary>
+        /// This expression is allowed to throw exceptions and should be caught with try...catch!
+        /// </summary>
         private static double ParsePrimary(string s, ref int pos, Dictionary<string, string> vars,
             Func<double, double, double> randomFunction)
         {
             SkipWhitespace(s, ref pos);
             if (pos >= s.Length)
-                CTShared.LogFatalError($"Unexpected end of expression at position {pos}! String: {s}", "CTMathExpr/ParsePrimary");
+                throw new CTMathExprException($"Unexpected end of expression at position {pos}! String: {s}", "CTMathExpr/ParsePrimary");
 
             if (s[pos] == '(')
             {
@@ -350,7 +404,7 @@ namespace ChitakTech
                 double val = ParseExpr(s, ref pos, vars, randomFunction);
                 SkipWhitespace(s, ref pos);
                 if (pos >= s.Length || s[pos] != ')')
-                    CTShared.LogFatalError($"Expected closing ) paranthesis at position {pos}! String: {s}", "CTMathExpr/ParsePrimary");
+                    throw new CTMathExprException($"Expected closing ) paranthesis at position {pos}! String: {s}");
                 pos++;
                 return val;
             }
@@ -366,7 +420,7 @@ namespace ChitakTech
                     int exponentStart = pos;
                     while (pos < s.Length && char.IsDigit(s[pos])) pos++;
                     if (pos == exponentStart)
-                        CTShared.LogFatalError($"Expected digits after exponent marker at position {pos}! String: {s}", "CTMathExpr/ParsePrimary");
+                        throw new CTMathExprException($"Expected digits after exponent marker at position {pos}! String: {s}");
                 }
                 return double.Parse(s.Substring(start, pos - start), CultureInfo.InvariantCulture);
             }
@@ -399,13 +453,13 @@ namespace ChitakTech
                             CultureInfo.InvariantCulture, out double variableValue)
                         && !double.IsNaN(variableValue) && !double.IsInfinity(variableValue))
                         return variableValue;
-                    CTShared.LogFatalError("Variable " + ident + " has invalid value: " + rawVariableValue, "CTMathExpr/ParsePrimary"); return 0;
+                    throw new CTMathExprException($"Variable {ident} has an invalid value: {rawVariableValue}");
                 }
 
-                CTShared.LogFatalError("Unknown identifier \"" + ident + "\"! String: " + s, "CTMathExpr/ParsePrimary"); return 0;
+                throw new CTMathExprException($"Unknown identifier \"{ident}\"! String: {s}");
             }
 
-            CTShared.LogFatalError("Unexpected character '" + s[pos] + "'! String: " + s, "CTMathExpr/ParsePrimary"); return 0;
+            throw new CTMathExprException($"Unexpected character \"{s[pos]}\"! String: {s}");
         }
 
         /// <summary>
@@ -439,7 +493,7 @@ namespace ChitakTech
                 expressionVars[variable.Key] = variable.Value;
             }
 
-            try
+            try  // Throwing allowed inside this
             {
                 int pos = 0;
                 result = ParseRangeExpr(expr, ref pos, expressionVars);
@@ -457,13 +511,21 @@ namespace ChitakTech
                 }
                 return true;
             }
-            catch (Exception e)
+            catch (CTMathExprException e)
             {
                 error = e.Message;
                 return false;
             }
+            catch (Exception e)
+            {
+                error = "An unknown exception occured: "+e.Message;
+                return false;
+            }
         }
 
+        /// <summary>
+        /// This expression is allowed to throw exceptions and should be caught with try...catch!
+        /// </summary>
         private static ValueRange ParseRangeExpr(string s, ref int pos,
             Dictionary<string, ValueRange> vars)
         {
@@ -516,14 +578,16 @@ namespace ChitakTech
             return ParseRangePrimary(s, ref pos, vars);
         }
 
+        /// <summary>
+        /// This expression is allowed to throw exceptions and should be caught with try...catch!
+        /// </summary>
         private static ValueRange ParseRangePrimary(string s, ref int pos,
             Dictionary<string, ValueRange> vars)
         {
             SkipWhitespace(s, ref pos);
             if (pos >= s.Length)
             {
-                CTShared.LogFatalError($"Unexpected end of expression at position {pos}! String: {s}", "CTMathExpr/ParseRangePrimary");
-                throw new OperationCanceledException();
+                throw new CTMathExprException($"Unexpected end of expression at position {pos}! String: {s}");
             }
 
             if (s[pos] == '(')
@@ -533,8 +597,7 @@ namespace ChitakTech
                 SkipWhitespace(s, ref pos);
                 if (pos >= s.Length || s[pos] != ')')
                 {
-                    CTShared.LogFatalError($"Expected a closing ')' at position {pos}! String: {s}", "CTMathExpr/ParseRangePrimary");
-                    throw new OperationCanceledException();
+                    throw new CTMathExprException($"Expected a closing ')' at position {pos}! String: {s}");
                 }
                 pos++;
                 return value;
@@ -552,8 +615,7 @@ namespace ChitakTech
                     while (pos < s.Length && char.IsDigit(s[pos])) pos++;
                     if (pos == exponentStart)
                     {
-                        CTShared.LogFatalError($"Expected digits after exponent marker at position {pos}! String: {s}", "CTMathExpr/ParseRangePrimary");
-                        throw new OperationCanceledException();
+                        throw new CTMathExprException($"Expected digits after exponent marker at position {pos}! String: {s}");
                     }
                 }
                 double number = double.Parse(s.Substring(start, pos - start),
@@ -591,14 +653,10 @@ namespace ChitakTech
 
                 if (vars.TryGetValue(identifier, out ValueRange variableValue))
                     return variableValue;
-                CTShared.LogFatalError("Unknown identifier \"" + identifier
-                    + "\" at position " + pos + "! String: " + s, "CTMathExpr/ParseRangePrimary");
-                throw new OperationCanceledException();
+                throw new CTMathExprException($"Unknown identifier \"{identifier}\" at position {pos}! String: {s}");
             }
 
-            CTShared.LogFatalError("Unexpected character '" + s[pos]
-                + "' at position " + pos + "! String: " + s, "CTMathExpr/ParseRangePrimary");
-            throw new OperationCanceledException();
+            throw new CTMathExprException("Unexpected character \"{s[pos]}\" at position {pos}! String: {s");
         }
 
         private static ValueRange MultiplyRanges(ValueRange left, ValueRange right)
@@ -608,10 +666,9 @@ namespace ChitakTech
             double c = left.Maximum * right.Minimum;
             double d = left.Maximum * right.Maximum;
             if (!CTShared.IsFinite(a) || !CTShared.IsFinite(b) || !CTShared.IsFinite(c) || !CTShared.IsFinite(d))
-                CTShared.LogFatalError($"Expression range overflow! " +
-                                      ValueRangeToString("left", left) + ", " +
-                                      ValueRangeToString("right", right),
-                                      "CTMathExpr/MultiplyRanges");
+                throw new CTMathExprException($"Expression range overflow! " +
+                                              ValueRangeToString("left", left) + ", " +
+                                              ValueRangeToString("right", right));
             return new ValueRange(Math.Min(Math.Min(a, b), Math.Min(c, d)),
                 Math.Max(Math.Max(a, b), Math.Max(c, d)));
         }
@@ -619,10 +676,9 @@ namespace ChitakTech
         private static ValueRange DivideRanges(ValueRange numerator, ValueRange denominator)
         {
             if (denominator.Minimum <= 0.0 && denominator.Maximum >= 0.0)
-                CTShared.LogFatalError("Expression can divide by zero! " +
-                                      ValueRangeToString("numerator", numerator) + ", " +
-                                      ValueRangeToString("denominator", denominator),
-                                      "CTMathExpr/DivideRanges");
+                throw new CTMathExprException("Expression can divide by zero! " +
+                                              ValueRangeToString("numerator", numerator) + ", " +
+                                              ValueRangeToString("denominator", denominator));
             ValueRange reciprocal = MakeRange(1.0 / denominator.Maximum,
                 1.0 / denominator.Minimum);
             return MultiplyRanges(numerator, reciprocal);
@@ -633,7 +689,7 @@ namespace ChitakTech
         {
             SkipWhitespace(expression, ref position);
             if (position >= expression.Length || expression[position] != token)
-                throw new FormatException("Expected '" + token + "' in " + function
+                throw new CTMathExprException("Expected '" + token + "' in " + function
                     + " at position " + position + ".");
             position++;
         }
@@ -644,10 +700,10 @@ namespace ChitakTech
             double exponent = exponentRange.Minimum;
             if (baseRange.Minimum < 0.0
                 && (!fixedExponent || exponent != Math.Truncate(exponent)))
-                throw new ArgumentException("Pow with negative bases requires a fixed integer exponent.");
+                throw new CTMathExprException("Pow with negative bases requires a fixed integer exponent.");
             if (baseRange.Minimum <= 0.0 && baseRange.Maximum >= 0.0
                 && exponentRange.Minimum < 0.0)
-                throw new ArgumentException("Pow can divide by zero for a negative exponent.");
+                throw new CTMathExprException("Pow can divide by zero for a negative exponent.");
 
             // For nonnegative bases, extrema are at corners (including x=0 and y=0).
             // For fixed integer powers of signed bases, x=0 is the only extra extremum.
@@ -661,10 +717,9 @@ namespace ChitakTech
         private static ValueRange MakeRange(double first, double second)
         {
             if (!CTShared.IsFinite(first) || !CTShared.IsFinite(second))
-                CTShared.LogFatalError("Expression range is not finite! " +
+                throw new CTMathExprException("Expression range is not finite! " +
                                       "first is " + first + ", " +
-                                      "second is " + second,
-                                      "CTMathExpr/MakeRange");
+                                      "second is " + second);
             return new ValueRange(Math.Min(first, second), Math.Max(first, second));
         }
     }
