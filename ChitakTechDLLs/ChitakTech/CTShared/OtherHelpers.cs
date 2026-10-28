@@ -20,10 +20,19 @@ namespace ChitakTech
         }
 
         /// <summary>
+        /// Approximately compare two floats.
+        /// </summary>
+        /// <param name="a">The first float to compare.</param>
+        /// <param name="b">The second float to compare.</param>
+        /// <returns>If the two floats are approximately equal.</returns>
+        private static bool ApproxEqual(float a, float b)
+            => Math.Abs(a - b) < Math.Abs(b) * 0.01f + 1e-9f;
+
+        /// <summary>
         /// Check if a double is finite (not NaN or infinite).
         /// </summary>
-        /// <param name="value">The double to check</param>
-        /// <returns>If the double is finite (not NaN or infinite)</returns>
+        /// <param name="value">The double to check.</param>
+        /// <returns>If the double is finite. (not NaN or infinite)</returns>
         public static bool IsFinite(double value)
             => !double.IsNaN(value) && !double.IsInfinity(value);
 
@@ -38,7 +47,7 @@ namespace ChitakTech
         /// <summary>
         /// Check if the double is finite (not NaN or infinite) and isn't negative.
         /// </summary>
-        /// <param name="value">The double to check</param>
+        /// <param name="value">The double to check.</param>
         /// <returns>If the double is finite (not NaN or infinite) and isn't negative.</returns>
         public static bool IsFiniteNonNegative(double value)
             => IsFinite(value) && value >= 0f;
@@ -46,7 +55,7 @@ namespace ChitakTech
         /// <summary>
         /// Check if the float is finite (not NaN or infinite) and isn't negative.
         /// </summary>
-        /// <param name="value">The float to check</param>
+        /// <param name="value">The float to check.</param>
         /// <returns>If the float is finite (not NaN or infinite) and isn't negative.</returns>
         public static bool IsFiniteNonNegative(float value)
             => IsFinite(value) && value >= 0f;
@@ -54,7 +63,7 @@ namespace ChitakTech
         /// <summary>
         /// Check if the double is finite (not NaN or infinite) and is positive.
         /// </summary>
-        /// <param name="value">The double to check</param>
+        /// <param name="value">The double to check.</param>
         /// <returns>If the double is finite (not NaN or infinite) and is negative.</returns>
         public static bool IsFinitePositive(double value)
             => IsFinite(value) && value > 0f;
@@ -62,7 +71,7 @@ namespace ChitakTech
         /// <summary>
         /// Check if the float is finite (not NaN or infinite) and is positive.
         /// </summary>
-        /// <param name="value">The float to check</param>
+        /// <param name="value">The float to check.</param>
         /// <returns>If the float is finite (not NaN or infinite) and is negative.</returns>
         public static bool IsFinitePositive(float value)
             => IsFinite(value) && value > 0f;
