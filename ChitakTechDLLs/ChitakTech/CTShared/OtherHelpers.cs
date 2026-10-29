@@ -25,7 +25,7 @@ namespace ChitakTech
         /// <param name="a">The first float to compare.</param>
         /// <param name="b">The second float to compare.</param>
         /// <returns>If the two floats are approximately equal.</returns>
-        private static bool ApproxEqual(float a, float b)
+        public static bool ApproxEqual(float a, float b)
             => Math.Abs(a - b) < Math.Abs(b) * 0.01f + 1e-9f;
 
         /// <summary>

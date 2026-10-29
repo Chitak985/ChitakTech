@@ -396,7 +396,7 @@ namespace ChitakTech
         {
             SkipWhitespace(s, ref pos);
             if (pos >= s.Length)
-                throw new CTMathExprException($"Unexpected end of expression at position {pos}! String: {s}", "CTMathExpr/ParsePrimary");
+                throw new CTMathExprException($"Unexpected end of expression at position {pos}! String: {s}");
 
             if (s[pos] == '(')
             {

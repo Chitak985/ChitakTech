@@ -309,7 +309,7 @@ namespace ChitakTech
                 densityLine = string.Format(
                     "This resource has special density parameters. " +
                     "Every unit of this resource weighs {0:F6} kilograms.",
-                    _selectedResource.density * 1000.0)
+                    _selectedResource.density * 1000.0);
 
             // Handle special volume, no changes needed for normal volume
             if (!CTShared.ApproxEqual(_selectedResource.volume, 1f))
@@ -319,12 +319,12 @@ namespace ChitakTech
                         "This resource has special density and volume parameters. " +
                         "Every unit of this resource weighs {0:F6} kilograms and each internal " +
                         "volume unit is filled by {1} of this resource.",
-                        _selectedResource.density * 1000.0, _selectedResource.volume))
+                        _selectedResource.density * 1000.0, _selectedResource.volume);
                 else
-                    // Normal density and special volume
-                    densityLine =
-                        "This resource has special volume parameters. " +
-                        $"{densityLine} and each internal volume unit is filled by {_selectedResource.volume} of this resource."
+                // Normal density and special volume
+                densityLine =
+                    "This resource has special volume parameters. " +
+                    $"{densityLine} and each internal volume unit is filled by {_selectedResource.volume} of this resource.";
 
             // Add the density string
             GUILayout.Label(densityLine, _wrapLabel, GUILayout.Width(labelW));
@@ -484,6 +484,6 @@ namespace ChitakTech
         /// Draw a close button, X, with width of 28.
         /// </summary>
         private bool CloseButton()
-            => GUILayout.Button("X", HighLogic.Skin.button, GUILayout.Width(28))
+            => GUILayout.Button("X", HighLogic.Skin.button, GUILayout.Width(28));
     }
 }
