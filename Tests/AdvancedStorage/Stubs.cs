@@ -21,6 +21,7 @@ public partial class ConfigNode
     public void AddValue(string key, object value) { scalarValues[key] = value.ToString(); repeatedValues.Add((key, value.ToString())); }
     public string[] GetValues(string key) => repeatedValues.Where(v => v.Item1 == key).Select(v => v.Item2).ToArray();
     public ConfigNode GetNode(string name) => GetNodes(name).FirstOrDefault();
+    public ConfigNode[] GetNodes() => nodes.Select(n => n.Item2).ToArray();
     public ConfigNode AddNode(string name) { var n = new ConfigNode(name); nodes.Add((name, n)); return n; }
     public void AddNode(ConfigNode node) => nodes.Add((node.name, node));
     public ConfigNode[] GetNodes(string name) => nodes.Where(n => n.Item1 == name).Select(n => n.Item2).ToArray();
@@ -30,6 +31,9 @@ public partial class ConfigNode
 public class BaseEvent { public bool active; }
 public class PartModule
 {
+    public enum StartState { None }
+    public bool enabled = true, isEnabled = true;
+    public virtual void OnStart(StartState state) { }
     public List<BaseEvent> Events = new List<BaseEvent>();
     public Part part;
     public virtual void OnLoad(ConfigNode node) { }

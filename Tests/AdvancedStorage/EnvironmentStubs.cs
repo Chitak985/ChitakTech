@@ -17,6 +17,7 @@ public partial class Vessel
 public class AvailablePart { public string title = "Test storage"; }
 public partial class Part
 {
+    public ConfigNode moduleConfig;
     public AvailablePart partInfo = new AvailablePart();
     public string name = "storage";
     public int explosions;
@@ -24,8 +25,10 @@ public partial class Part
 }
 namespace ChitakTech
 {
+    public class ChitakTechISRU : PartModule { }
     public partial class CTShared
     {
+        public static ConfigNode FindModuleConfigNode(PartModule module, string name) => module.part.moduleConfig;
         public static CTShared Instance = new CTShared();
         public enum SituationCondition { Landed, FlyingLow, SplashedDown }
         public static SituationCondition GetVesselSituation(Vessel vessel) => SituationCondition.Landed;
@@ -53,9 +56,8 @@ namespace ChitakTech
         public double PassiveMultiplierForTest => EffectivePassiveMultiplier;
     }
     // Test the production MaterialStorage environment binding without Unity's PartModule host.
-    public partial class ChitakTechMaterialStorage
+    public partial class ChitakTechMaterialStorage : PartModule
     {
-        public Part part;
         public float volume = 10;
         private bool _fatalConfigError = false;
         public List<double> contents = new List<double>();

@@ -163,6 +163,7 @@ static partial class Program
         CapacityTests();
         SharedVolumeTests();
         EnvironmentTests();
+        DestructivePartTests();
         DegradationTests();
         Console.WriteLine(assertions + " assertions passed.");
     }

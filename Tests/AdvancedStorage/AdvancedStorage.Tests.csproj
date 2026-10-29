@@ -14,6 +14,8 @@
     <Compile Include="CapacityTests.cs" />
     <Compile Include="SharedVolumeTests.cs" />
     <Compile Include="EnvironmentTests.cs" />
+    <Compile Include="DestructivePartTests.cs" />
+    <Compile Include="../../ChitakTechDLLs/ChitakTech/PartModules/ChitakTechDestructivePart.cs" Link="ChitakTechDestructivePart.cs" />
     <Compile Include="EnvironmentStubs.cs" />
     <Compile Include="../../ChitakTechDLLs/ChitakTech/StorageEnvironment.cs" Link="StorageEnvironment.cs" />
     <Compile Include="../../ChitakTechDLLs/ChitakTech/RuntimeData.cs" Link="RuntimeData.cs" />
