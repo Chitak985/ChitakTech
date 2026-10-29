@@ -105,7 +105,7 @@ namespace ChitakTech
             return Math.Min(GetStoredAmount(name), budget);
         }
 
-        public double GetAvailableSpace(string name, double fillAmount = 1.0)
+        public double GetAvailableSpace(string name, double fillAmount = 1.0, bool ignoreRateLimit = false)
         {
             if (!TransfersEnabled || !_supportedResources.Contains(name)
                 || !CTShared.IsFinite(fillAmount) || fillAmount <= 0.0
@@ -119,7 +119,7 @@ namespace ChitakTech
             double space = Math.Max(0.0, capacity - UsedCapacity) / ResourceVolumeMultiplier(name);
             double budget = EffectiveInputRate < 0f ? double.PositiveInfinity
                 : Math.Max(0.0, EffectiveInputRate * TimeWarp.fixedDeltaTime - _inputThisTick);
-            return Math.Min(space, budget);
+            return ignoreRateLimit ? space : Math.Min(space, budget);
         }
 
         /// <summary>Positive consumes, negative produces. Returns the signed amount moved.</summary>
@@ -143,6 +143,16 @@ namespace ChitakTech
             => amount > 0.0 ? RequestStoredResource(name, amount) : 0.0;
         public double PutResource(string name, double amount)
             => amount > 0.0 ? -RequestStoredResource(name, -amount) : 0.0;
+
+        internal double TransferResourceTo(ChitakTechStorage target, string name, double amount)
+        {
+            if (target == null || target == this || part?.vessel == null
+                || part.vessel != target.part?.vessel || !CTShared.IsFinite(amount) || amount <= 0) return 0;
+            double taken = TakeResource(name, Math.Min(amount, target.GetAvailableSpace(name)));
+            double accepted = target.PutResource(name, taken);
+            if (accepted < taken) UndoTransfer(name, taken - accepted);
+            return accepted;
+        }
 
         // Exact synchronous rollback only. Returning an accepted transfer must not be
         // prevented by a rate limit, full tank, or the opposite direction being blocked.

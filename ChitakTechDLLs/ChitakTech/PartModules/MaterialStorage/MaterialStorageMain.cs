@@ -14,6 +14,9 @@ namespace ChitakTech
         [KSPField(isPersistant = false)]
         public float volume = 1f;
 
+        [KSPField(isPersistant = false)]
+        public int maxAmount = -1;
+
         /// <summary>Displays used volume as "Volume Used: [0 / 0]"</summary>
         [KSPField(isPersistant = false, guiActive = true, guiActiveEditor = true,
                   guiName = "Volume Used", groupName = "chitaktechmatstorage")]
@@ -264,6 +267,8 @@ namespace ChitakTech
         {
             if (_fatalConfigError || !CheckStorageEnvironment() || !AcceptsMaterial(mat))
                 return false;
+
+            if (mat.amount > RemainingAmountCapacity) return false;
 
             double incomingVolume = mat.TotalVolume;
             if (EffectiveVolume <= 0) return false;

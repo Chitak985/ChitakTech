@@ -4,6 +4,32 @@ using ChitakTech;
 
 static partial class Program
 {
+    static void StorageTransferTests()
+    {
+        var (part, from, _) = Setup();
+        var otherPart = new Part { vessel = part.vessel };
+        part.vessel.parts.Add(otherPart);
+        var to = new ChitakTechStorage { part = otherPart };
+        otherPart.Modules.Add(to); to.Ready();
+        from.PutResource("A", 10);
+        from.maxOutputRate = 2;
+        to.maxInputRate = 1;
+        UnityEngine.Time.fixedTime++;
+        double step = TimeWarp.fixedDeltaTime;
+        Equal(step, from.TransferResourceTo(to, "A", 5), "destination rate limits transfer");
+        Equal(0, from.TransferResourceTo(to, "A", 5), "combined input budget respected");
+        Equal(10 - step, from.GetStoredAmount("A"), "source loses only accepted amount");
+        UnityEngine.Time.fixedTime++;
+        Equal(step, from.TransferResourceTo(to, "A", 5), "next tick resumes transfer");
+        Equal(2 * step, to.GetStoredAmount("A"), "destination receives transferred amount");
+        Equal(0, from.TransferResourceTo(from, "A", 5), "self transfer rejected");
+        otherPart.vessel = new Vessel();
+        Equal(0, from.TransferResourceTo(to, "A", 5), "separate vessels rejected");
+        otherPart.vessel = part.vessel;
+        to.state = CTShared.ChargablePartState.Off;
+        Equal(0, from.TransferResourceTo(to, "A", 5), "unavailable destination rejected");
+    }
+
     static ConfigNode CapacityConfig(string amount = "100")
     {
         var module = new ConfigNode();
