@@ -21,6 +21,8 @@ namespace ChitakTech
         public void HandleCharging(double dt)
         {
             EnforceMaintenanceResults();
+            // Capture before charging/completion changes the status during this simulation step.
+            CaptureMaintenanceClockStatus();
             _chargingSeconds = 0;
             _secondsBelowThreshold = chargingRequired && chargePercent < EffectiveChargeThreshold ? dt : 0;
             if (!chargingRequired || double.IsNaN(dt) || double.IsInfinity(dt) || dt <= 0) return;

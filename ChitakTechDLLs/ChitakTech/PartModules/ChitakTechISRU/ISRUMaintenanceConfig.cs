@@ -45,12 +45,19 @@ namespace ChitakTech
                             status = RequiredMaintenanceText(stageNode, "status"),
                             time = MaintenanceNumber(stageNode, "time", null, double.Epsilon),
                             chance = MaintenanceNumber(stageNode, "chance", 1, 0, 1),
-                            timeIsRuntime = MaintenanceBool(stageNode, "timeIsRuntime", false),
+                            tickRuntime = MaintenanceBool(stageNode, "tickRuntime", false),
+                            tickOff = MaintenanceBool(stageNode, "tickOff", false),
+                            tickCharging = MaintenanceBool(stageNode, "tickCharging", false),
+                            tickReady = MaintenanceBool(stageNode, "tickReady", false),
+                            tickWorking = MaintenanceBool(stageNode, "tickWorking", false),
                             ignoreOrder = MaintenanceBool(stageNode, "ignoreOrder", false),
                             canFix = MaintenanceBool(stageNode, "canFix", true)
                         };
 
                         // Load stage order conditions
+                        if (!(stage.tickRuntime || stage.tickOff || stage.tickCharging || stage.tickReady || stage.tickWorking))
+                            CTShared.LogError($"Recipe \"{_name}\": MAINTENANCE \"{definition.name}\", STAGE {stage.order}: all tick flags are false; this stage will never tick.",
+                                "ChitakTechISRURecipe/LoadMaintenance");
                         if (stageNode.HasValue("returnOrder"))
                             stage.returnOrder = ReadRequiredOrder(stageNode.GetValue("returnOrder"), "returnOrder");
                         foreach (ConfigNode resultNode in stageNode.GetNodes("RESULT"))

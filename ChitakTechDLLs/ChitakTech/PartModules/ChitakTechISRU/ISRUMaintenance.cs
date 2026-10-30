@@ -13,6 +13,19 @@ namespace ChitakTech
         private readonly Dictionary<string, MaintenanceState> _maintenanceStates =
             new Dictionary<string, MaintenanceState>(StringComparer.Ordinal);
         private double _maintenanceRuntime;
+        private MaintenanceClockStatus _maintenanceClockStatus;
+
+        private void CaptureMaintenanceClockStatus()
+        {
+            _maintenanceClockStatus = MaintenanceClockStatus.None;
+            if (state == CTShared.ChargablePartState.Off) _maintenanceClockStatus |= MaintenanceClockStatus.Off;
+            else
+            {
+                if (state == CTShared.ChargablePartState.Charging) _maintenanceClockStatus |= MaintenanceClockStatus.Charging;
+                if (isRunning) _maintenanceClockStatus |= MaintenanceClockStatus.Working;
+                else if (state == CTShared.ChargablePartState.On && CanOperate) _maintenanceClockStatus |= MaintenanceClockStatus.Ready;
+            }
+        }
 
         private MaintenanceState MaintenanceFor(MaintenanceDefinition definition)
         {
@@ -111,7 +124,8 @@ namespace ChitakTech
                 saved.lastUniversalTime = now;
                 var before = saved.Active(definition);
                 var triggered = new List<MaintenanceStage>();
-                saved.Advance(definition, elapsed, _maintenanceRuntime, () => UnityEngine.Random.value, triggered.Add);
+                saved.Advance(definition, elapsed, _maintenanceRuntime, () => UnityEngine.Random.value, triggered.Add,
+                    _maintenanceClockStatus);
                 foreach (var occurrence in triggered)
                     if (ApplyMaintenanceResults(occurrence)) return;
                 EnforceMaintenanceResults();

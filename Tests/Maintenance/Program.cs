@@ -15,7 +15,7 @@ internal static class Program
         return definition;
     }
     private static MaintenanceStage Stage(int order, double time, bool parallel = false, bool runtime = false)
-        => new MaintenanceStage { order = order, time = time, ignoreOrder = parallel, timeIsRuntime = runtime, status = "Stage " + order };
+        => new MaintenanceStage { order = order, time = time, ignoreOrder = parallel, tickRuntime = runtime, tickOff = !runtime, status = "Stage " + order };
     private static ConfigNode Config(out ConfigNode stage)
     {
         var root = new ConfigNode();
@@ -23,10 +23,12 @@ internal static class Program
         maintenance.AddValue("name", "Screws"); maintenance.AddValue("statusOptimal", "Like New");
         stage = maintenance.AddNode("STAGE");
         stage.AddValue("order", 1); stage.AddValue("status", "Loose"); stage.AddValue("time", 10);
+        stage.AddValue("tickOff", true); stage.AddValue("tickReady", true); stage.AddValue("tickCharging", true); stage.AddValue("tickWorking", true);
         return root;
     }
     private static void Timers()
     {
+        TickFlags();
         ResultTests();
         var definition = Definition(Stage(1, 10), Stage(3, 10), Stage(2, 10));
         var state = new MaintenanceState();
@@ -56,6 +58,40 @@ internal static class Program
         definition.stages[0].chance = 0; state = new MaintenanceState();
         state.Advance(definition, 1000, 0, () => throw new Exception("zero chance should not roll"));
         Check(state.activeOrder == null, "chance zero never activates");
+    }
+
+    private static void TickFlags()
+    {
+        // Exhaust every combination of flags and status bits, including charging + working.
+        for (int flags = 0; flags < 32; flags++)
+            for (int status = 0; status < 16; status++)
+            {
+                var stage = new MaintenanceStage { tickRuntime = (flags & 16) != 0,
+                    tickOff = (flags & 1) != 0, tickCharging = (flags & 2) != 0,
+                    tickReady = (flags & 4) != 0, tickWorking = (flags & 8) != 0 };
+                double expected = (flags & status & 15) != 0 ? 10 : stage.tickRuntime ? 3 : 0;
+                Check(stage.ClockSeconds(10, 3, (MaintenanceClockStatus)status) == expected,
+                    "clock flags use OR, never sum elapsed and runtime");
+            }
+        var root = Config(out var node);
+        foreach (string key in new[] { "tickRuntime", "tickOff", "tickCharging", "tickReady", "tickWorking" }) node.SetValue(key, false);
+        int errors = CTShared.Errors.Count;
+        var recipe = new ChitakTechISRURecipe();
+        Check(recipe.ParseMaintenance(root), "all false flags do not invalidate recipe");
+        Check(CTShared.Errors.Count == errors + 1, "all false flags log stage error");
+        var saved = new MaintenanceState();
+        saved.Advance(recipe.maintenance[0], 10000, 5000, () => 0, status: (MaintenanceClockStatus)15);
+        Check(saved.activeOrder == null && saved.elapsed.Count == 0, "all false stage never ticks");
+        root = new ConfigNode(); var maintenance = root.AddNode("MAINTENANCE");
+        maintenance.AddValue("name", "Defaults"); maintenance.AddValue("statusOptimal", "Good");
+        node = maintenance.AddNode("STAGE"); node.AddValue("order", 1); node.AddValue("time", 1); node.AddValue("status", "Bad");
+        recipe = new ChitakTechISRURecipe();
+        Check(recipe.ParseMaintenance(root), "omitted flags keep recipe valid");
+        var defaults = recipe.maintenance[0].stages[0];
+        Check(!defaults.tickRuntime && !defaults.tickOff && !defaults.tickCharging && !defaults.tickReady && !defaults.tickWorking,
+            "all five flags default false");
+        node.AddValue("tickWorking", "notABoolean");
+        Check(!new ChitakTechISRURecipe().ParseMaintenance(root), "malformed boolean still invalidates configuration");
     }
 
     private static void ResultTests()
@@ -117,7 +153,7 @@ internal static class Program
         var root = Config(out var stage); var recipe = new ChitakTechISRURecipe();
         Check(recipe.ParseMaintenance(root), "minimal documented config parses");
         var parsed = recipe.maintenance.Single().stages.Single();
-        Check(parsed.canFix && !parsed.autoFix && !parsed.timeIsRuntime && !parsed.ignoreOrder
+        Check(parsed.canFix && !parsed.autoFix && !parsed.tickRuntime && !parsed.ignoreOrder
             && parsed.chance == 1 && parsed.evaFixers.All(n => n == 0), "defaults match config contract");
         root = Config(out stage); stage.AddValue("chance", 1.1);
         Check(!new ChitakTechISRURecipe().ParseMaintenance(root), "invalid chance rejected");

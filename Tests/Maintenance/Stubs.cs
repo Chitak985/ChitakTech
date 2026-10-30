@@ -84,7 +84,8 @@ namespace ChitakTech
         public sealed class ExplosionHost { public void MassiveVesselExplosion(Vessel v, double range, double lifetime) { } }
         public static ExplosionHost Instance = new ExplosionHost();
         public enum SituationCondition { Landed, Splashed }
-        public static void LogError(string message, string context) { }
+        public static readonly List<string> Errors = new List<string>();
+        public static void LogError(string message, string context) { Errors.Add(message); }
         public static string GetStrValueFromCFG(ConfigNode node, string key, string fallback) => node.GetValue(key) ?? fallback;
         public static double GetDoubleValueFromCFG(ConfigNode node, string key, double fallback)
             => double.TryParse(node.GetValue(key), NumberStyles.Float, CultureInfo.InvariantCulture, out var value) ? value : fallback;
@@ -115,6 +116,7 @@ namespace ChitakTech
     public partial class ChitakTechISRU
     {
         public bool isRunning;
+        private bool CanOperate => state != CTShared.ChargablePartState.Off;
         public float chargePercent;
         public CTShared.ChargablePartState state;
         public readonly List<ChitakTechISRURecipe.PowerfailResult> results = new List<ChitakTechISRURecipe.PowerfailResult>();
@@ -153,7 +155,7 @@ namespace ChitakTech
             return true;
         }
         public MaintenanceState State(MaintenanceDefinition definition) => MaintenanceFor(definition);
-        public void Tick(double dt, double runtime = 0) { Planetarium.now += dt; _maintenanceRuntime = runtime; TickMaintenance(dt); }
+        public void Tick(double dt, double runtime = 0) { CaptureMaintenanceClockStatus(); Planetarium.now += dt; _maintenanceRuntime = runtime; TickMaintenance(dt); }
         public void SaveState(ConfigNode node) { node.AddValue("autoMaintenanceFixing", autoMaintenanceFixing); SaveMaintenanceState(node); }
         public void LoadState(ConfigNode node) => LoadMaintenanceState(node);
         public ChitakTechISRUBiomeConfig Effective() => GetEffectiveBiomeConfig();

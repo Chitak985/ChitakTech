@@ -4,6 +4,8 @@ using System.Linq;
 
 namespace ChitakTech
 {
+    [Flags]
+    public enum MaintenanceClockStatus { None = 0, Off = 1, Charging = 2, Ready = 4, Working = 8 }
     // Kept independent of Unity so timer/order/chance behavior can be tested directly.
     public sealed class MaintenanceStage
     {
@@ -12,7 +14,17 @@ namespace ChitakTech
         public int order;
         public string status;
         public double time, fixTime, chance = 1;
-        public bool timeIsRuntime, ignoreOrder, autoFix, canFix = true;
+        public bool tickRuntime, tickOff, tickCharging, tickReady, tickWorking;
+        public bool ignoreOrder, autoFix, canFix = true;
+
+        public double ClockSeconds(double elapsed, double runtime, MaintenanceClockStatus status)
+        {
+            bool enabled = (tickOff && (status & MaintenanceClockStatus.Off) != 0)
+                || (tickCharging && (status & MaintenanceClockStatus.Charging) != 0)
+                || (tickReady && (status & MaintenanceClockStatus.Ready) != 0)
+                || (tickWorking && (status & MaintenanceClockStatus.Working) != 0);
+            return enabled ? elapsed : tickRuntime ? Math.Min(elapsed, runtime) : 0;
+        }
         public bool fixersCrewSamePart;
         public readonly HashSet<int> requiredOrdersAND = new HashSet<int>();
         public readonly List<int[]> requiredOrdersOR = new List<int[]>();
@@ -76,7 +88,8 @@ namespace ChitakTech
         }
 
         public void Advance(MaintenanceDefinition definition, double wallSeconds,
-            double runtimeSeconds, Func<double> random, Action<MaintenanceStage> triggered = null)
+            double runtimeSeconds, Func<double> random, Action<MaintenanceStage> triggered = null,
+            MaintenanceClockStatus status = MaintenanceClockStatus.Off)
         {
             if (!Finite(wallSeconds) || wallSeconds < 0
                 || !Finite(runtimeSeconds) || runtimeSeconds < 0) return;
@@ -92,7 +105,7 @@ namespace ChitakTech
                 {
                     if (!stage.ignoreOrder && definition.stages[current + 1] != stage) continue;
                     if (!stage.RequirementsMet(occurredOrders)) continue;
-                    double seconds = stage.timeIsRuntime ? runtimeSeconds : wallSeconds;
+                    double seconds = stage.ClockSeconds(wallSeconds, runtimeSeconds, status);
                     if (seconds <= 0) continue;
                     eligible.Add(stage);
                     double age = elapsed.TryGetValue(stage.order, out double value) ? value : 0;
@@ -102,7 +115,7 @@ namespace ChitakTech
                 foreach (MaintenanceStage stage in eligible)
                 {
                     double age = elapsed.TryGetValue(stage.order, out double value) ? value : 0;
-                    elapsed[stage.order] = age + next * (stage.timeIsRuntime ? runtimeSeconds : wallSeconds);
+                    elapsed[stage.order] = age + next * stage.ClockSeconds(wallSeconds, runtimeSeconds, status);
                 }
                 fraction -= next;
                 // Eligibility at this boundary uses the same history for all simultaneous
