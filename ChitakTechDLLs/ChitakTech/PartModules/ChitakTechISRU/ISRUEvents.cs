@@ -5,6 +5,17 @@ namespace ChitakTech
 {
     public partial class ChitakTechISRU
     {
+        [KSPField(isPersistant = true)]
+        public bool runOneCycle;
+
+        [KSPEvent(guiActive = true, guiActiveEditor = false, guiName = "Run one cycle",
+                  groupName = "chitaktechisru")]
+        public void RunOneCycle()
+        {
+            if (isRunning) return;
+            StartConverter();
+            if (isRunning) runOneCycle = true;
+        }
         [KSPEvent(guiActive = true, guiActiveEditor = false, guiName = "Enable Charging",
                   groupName = "chitaktechisru")]
         public void EnableCharging()
@@ -52,6 +63,7 @@ namespace ChitakTech
         groupName = "chitaktechisru")]
         public void StartConverter()
         {
+            if (isRunning) return;
             if (needsMaintenance)
             {
                 ScreenMessages.PostScreenMessage(new ScreenMessage(
@@ -87,6 +99,7 @@ namespace ChitakTech
                 return;
             }
 
+            runOneCycle = false;
             isRunning = true;
             CTShared.Log("Converter \"" + ConverterName + "\" started.", "ChitakTechISRU/StartConverter");
             UpdateEventVisibility();
@@ -96,6 +109,7 @@ namespace ChitakTech
                   groupName = "chitaktechisru")]
         public void StopConverter()
         {
+            runOneCycle = false;
             isRunning = false;
             CTShared.Log("Converter \"" + ConverterName + "\" stopped.", "ChitakTechISRU/StopConverter");
             UpdateEventVisibility();

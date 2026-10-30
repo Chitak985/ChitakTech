@@ -178,7 +178,10 @@ namespace ChitakTech
                 actions.Add("Stop Converter");
             else if (!info.needsMaintenance
                 && info.canOperate)
+            {
                 actions.Add("Start Converter");
+                actions.Add("Run one cycle");
+            }
             if (!info.isRunning && info.recipeNames.Count > 1)
                 actions.Add("Switch Recipe");
             if (!info.isRunning && info.recipeSettings.Count > 0)
@@ -238,6 +241,8 @@ namespace ChitakTech
                     selected = ChitakTechISRU.InventoryAction.TurnOff; break;
                 case "Start Converter":
                     selected = ChitakTechISRU.InventoryAction.Start; break;
+                case "Run one cycle":
+                    selected = ChitakTechISRU.InventoryAction.RunOneCycle; break;
                 case "Stop Converter":
                     selected = ChitakTechISRU.InventoryAction.Stop; break;
                 default:

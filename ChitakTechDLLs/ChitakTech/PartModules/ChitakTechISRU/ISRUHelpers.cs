@@ -90,6 +90,7 @@
             Fields["stateDisplay"].guiUnfocusedRange = _maxDisplayDistance;
 
             Events["StartConverter"].unfocusedRange = _maxInteractionDistance;
+            Events["RunOneCycle"].unfocusedRange = _maxInteractionDistance;
             Events["StopConverter"].unfocusedRange = _maxInteractionDistance;
             Events["PerformMaintenance"].unfocusedRange = _maxInteractionDistance;
             Events["SwitchRecipe"].unfocusedRange = _maxInteractionDistance;

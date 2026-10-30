@@ -1406,6 +1406,9 @@ namespace ChitakTech
             ApplyShowRule(Events["StopConverter"],
                 showPAW: isRunning && _controlsShowPAW,
                 showEVA: isRunning && _controlsShowEVA);
+            ApplyShowRule(Events["RunOneCycle"],
+                showPAW: !isRunning && !needsMaintenance && _controlsShowPAW,
+                showEVA: !isRunning && !needsMaintenance && _controlsShowEVA);
 
             Events["PerformMaintenance"].active = needsMaintenance;
             Events["PerformMaintenance"].guiActiveUnfocused = needsMaintenance;
@@ -1811,6 +1814,15 @@ namespace ChitakTech
                     ClearPassiveConsumption();
                     completedBatches++;
                     performedWork = true;
+                    if (runOneCycle)
+                    {
+                        runOneCycle = false;
+                        isRunning = false;
+                        statusDisplay = "One cycle complete";
+                        progressDisplay = "Off";
+                        UpdateEventVisibility();
+                        return performedWork;
+                    }
                     if (remainingDt > 0.0)
                     {
                         if (!TryResolveRecipeTime(biomeConfig,

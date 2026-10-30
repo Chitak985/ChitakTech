@@ -13,6 +13,7 @@ namespace ChitakTech
             TurnOn,
             TurnOff,
             Start,
+            RunOneCycle,
             Stop,
             SwitchRecipe,
             FixMaintenance,
@@ -43,6 +44,7 @@ namespace ChitakTech
 
         private void ResetInventoryPersistentState()
         {
+            runOneCycle = false;
             isRunning = false;
             needsMaintenance = false;
             autoMaintenanceFixing = false;
@@ -307,16 +309,21 @@ namespace ChitakTech
                         return true;
 
                     case InventoryAction.Start:
-                        if (needsMaintenance || state != CTShared.ChargablePartState.On)
+                    case InventoryAction.RunOneCycle:
+                        if (isRunning || needsMaintenance || !CanOperate)
                             return false;
                         ChitakTechISRUBiomeConfig biomeConfig = GetEffectiveBiomeConfig();
                         if (GetRequiredDepositConditions(biomeConfig).Count > 0
                             && !IsAtRequiredDeposit(biomeConfig))
                             return false;
+                        if (_activeRecipe != null && _activeRecipe.UsesParallaxScatters
+                            && !TryGetNearbyParallaxTarget(true, out _)) return false;
+                        runOneCycle = action == InventoryAction.RunOneCycle;
                         isRunning = true;
                         return true;
 
                     case InventoryAction.Stop:
+                        runOneCycle = false;
                         isRunning = false;
                         return true;
 
