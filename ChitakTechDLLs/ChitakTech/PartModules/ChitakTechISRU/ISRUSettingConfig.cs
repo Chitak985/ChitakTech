@@ -36,6 +36,8 @@ namespace ChitakTech
                 { valid = SettingError("SETTING needs a literal name and unique alphanumeric var."); continue; }
                 if (entry.HasNode("OPTIONS"))
                 {
+                    if (entry.HasNode("SETTING_CONDITIONS"))
+                    { valid = SettingError("SETTING " + variable + ": SETTING_CONDITIONS is only supported for numeric settings."); continue; }
                     foreach (string field in new[] { "min", "max", "mul1", "mul2", "default", "step" })
                         if (entry.HasValue(field)) SettingError("SETTING " + variable + ": " + field
                             + " is not allowed with OPTIONS and was ignored.");
@@ -69,10 +71,46 @@ namespace ChitakTech
                 numbers &= TryReadOptionalDouble(entry, "default", min, out double initial);
                 if (!numbers || min > max || initial < min || initial > max || step <= 0 || mul1 <= 0 || mul2 <= 0)
                 { valid = SettingError("SETTING " + variable + " has invalid numeric bounds/default/steps."); continue; }
-                _settings.Add(new RecipeSetting { name = name, variable = variable, min = min, max = max,
+                var conditions = new List<string>();
+                foreach (ConfigNode conditionsNode in entry.GetNodes("SETTING_CONDITIONS"))
+                {
+                    if (conditionsNode.nodes.Count != 0
+                        || conditionsNode.values.Cast<ConfigNode.Value>().Any(v => v.name != "var" || string.IsNullOrWhiteSpace(v.value)))
+                    { valid = SettingError("SETTING " + variable + ": SETTING_CONDITIONS accepts only nonempty var entries."); continue; }
+                    conditions.AddRange(conditionsNode.GetValues("var"));
+                }
+                _settings.Add(new RecipeSetting { name = name, variable = variable, min = min, max = max, conditions = conditions,
                     multiplier1 = mul1, multiplier2 = mul2, step = step, defaultValue = initial });
             }
+            // All settings must be loaded first: conditions can reference later definitions.
+            if (valid && !ValidateSettingConditions(null, out string error))
+                valid = SettingError("Default settings fail: " + error);
             return valid;
+        }
+
+        internal bool ValidateSettingConditions(IDictionary<string, double> values, out string error)
+        {
+            double Selected(RecipeSetting setting) => values != null && values.TryGetValue(setting.variable, out double value)
+                ? setting.Clamp(value) : setting.defaultValue;
+            foreach (RecipeSetting setting in _settings)
+                foreach (string condition in setting.conditions ?? Enumerable.Empty<string>())
+                {
+                    double? Resolve(string variable)
+                    {
+                        // Only other numeric settings are available, never the current setting,
+                        // material references, ordinary variables, or dropdown option indices.
+                        if (variable == setting.variable) return null;
+                        foreach (var other in _settings)
+                            if (other.variable == variable && !other.IsChoice) return Selected(other);
+                        return null;
+                    }
+                    if (!MaterialParameterCondition.TryResolve(condition.Trim(), Resolve, out string resolved, out string detail))
+                    { error = setting.name + ": invalid condition \"" + condition + "\": " + detail; return false; }
+                    if (!CTShared.EvaluateParamComparison(Selected(setting).ToString("R", CultureInfo.InvariantCulture), resolved))
+                    { error = setting.name + " does not satisfy \"" + condition + "\"."; return false; }
+                }
+            error = null;
+            return true;
         }
 
         internal static bool ValidateModuleSettingScope(ConfigNode module)

@@ -82,6 +82,20 @@ internal static class SettingStateTests
         var inactiveSave = new ConfigNode(); restored.SaveSettings(inactiveSave);
         Check(inactiveSave.GetNode("RECIPE_SETTING_VALUES").GetNode("RECIPE").GetNodes("SETTING")
             .Single(n => n.GetValue("var") == "resource").GetValue("option") == "Sand", "inactive choice not changed by reordered config");
+        var constrainedConfig = Config();
+        var conditions = new ConfigNode("SETTING_CONDITIONS");
+        conditions.AddValue("var", "L3");
+        constrainedConfig.GetNodes("SETTING")[1].AddNode(conditions);
+        var constrained = new ChitakTechISRU(); constrained.Select(new ChitakTechISRURecipe(constrainedConfig, "Test"));
+        var previousRecipe = constrained._activeRecipe;
+        constrained.Open(); CTShared.Instance.dialogValues["number"] = 3;
+        CTShared.Instance.done(CTShared.Instance.dialogValues);
+        Check(constrained.Values()["number"] == 1 && constrained._activeRecipe == previousRecipe,
+            "failed condition leaves values and recipe unchanged");
+        Check(constrained.refunds == 0 && constrained.applies == 0, "failed condition does not reset batch progress");
+        constrained.Open(); CTShared.Instance.dialogValues["number"] = 2;
+        CTShared.Instance.done(CTShared.Instance.dialogValues);
+        Check(constrained.Values()["number"] == 2 && constrained.applies == 1, "valid condition applies settings");
         return checks;
     }
 }

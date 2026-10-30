@@ -65,6 +65,7 @@ namespace ChitakTech
         public struct RecipeSetting
         {
             public List<string> options;
+            public List<string> conditions;
             public List<string> optionDisplayNames;
             public bool IsChoice => options != null;
             public string SelectedOption(double index) => options[(int)Clamp(index)];
@@ -168,6 +169,9 @@ namespace ChitakTech
                 ConfigNode sourceNode = node;
                 _name = node?.GetValue("name") ?? "Recipe";
                 bool configurationError = !LoadSettingDefinitions(node);
+                if (!configurationError && settingValues != null
+                    && !ValidateSettingConditions(settingValues, out string settingError))
+                { SettingError(settingError); configurationError = true; }
                 node = new ConfigNode();
                 sourceNode.CopyTo(node);
                 if (!ResolveSettingConfig(node, settingValues, true)) configurationError = true;

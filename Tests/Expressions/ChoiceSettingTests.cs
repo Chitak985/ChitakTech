@@ -26,6 +26,37 @@ internal static class ChoiceSettingTests
             return root;
         }
         var node = Node("name", "Prefix(SETTING:resource)Suffix");
+        ConfigNode Constrained(params string[] comparisons)
+        {
+            var root = Node("name", "Water");
+            var numeric = root.GetNodes("SETTING")[1];
+            var conditions = new ConfigNode("SETTING_CONDITIONS"); numeric.AddNode(conditions);
+            foreach (string comparison in comparisons) conditions.AddValue("var", comparison);
+            var limit = new ConfigNode("SETTING"); root.AddNode(limit);
+            limit.AddValue("name", "Limit"); limit.AddValue("var", "limit");
+            limit.AddValue("min", 1); limit.AddValue("max", 100); limit.AddValue("default", 3);
+            return root;
+        }
+        var constrained = new ChitakTechISRURecipe(Constrained("EM1", "L(SETTING:limit)"), "Test");
+        Check(constrained.IsValid, "conditions validate defaults and forward references");
+        var proposed = new Dictionary<string, double> { ["count"] = 5, ["limit"] = 6 };
+        Check(constrained.ValidateSettingConditions(proposed, out _), "conditions use all proposed values");
+        Check(constrained.WithSettingValues(proposed).IsValid, "valid constrained selection builds");
+        proposed["limit"] = 5;
+        Check(!constrained.ValidateSettingConditions(proposed, out var conditionError) && conditionError.Contains("Count"), "failed condition reports setting");
+        Check(!constrained.WithSettingValues(proposed).IsValid, "constructor also rejects invalid saved or proposed settings");
+        foreach (string comparison in new[] { "M3", "Lunknown", "L(SETTING:count)", "L(SETTING:missing)",
+            "L(SETTING:resource)", "L(INMAT:test:amount)", "L(OUTMAT:test:amount)", "L(SETTING:limit" })
+            Check(!new ChitakTechISRURecipe(Constrained(comparison), "Test").IsValid, "invalid condition/default rejected: " + comparison);
+        Check(new ChitakTechISRURecipe(Constrained("[(SETTING:limit)-1]"), "Test").IsValid, "interpolated equality supported");
+        Check(new ChitakTechISRURecipe(Constrained("EL(SETTING:limit)-1", "EM2"), "Test").IsValid, "inclusive boundaries supported");
+        Check(new ChitakTechISRURecipe(Constrained(), "Test").IsValid, "empty conditions impose no restrictions");
+        var badConditions = Constrained();
+        badConditions.GetNodes("SETTING")[1].GetNode("SETTING_CONDITIONS").AddValue("wrong", "L3");
+        Check(!new ChitakTechISRURecipe(badConditions, "Test").IsValid, "only var entries accepted");
+        badConditions = Node("name", "Water");
+        badConditions.GetNodes("SETTING")[0].AddNode(new ConfigNode("SETTING_CONDITIONS"));
+        Check(!new ChitakTechISRURecipe(badConditions, "Test").IsValid, "dropdown conditions rejected");
         var recipe = new ChitakTechISRURecipe(node, "Test");
         Check(recipe.IsValid, "choice recipe valid");
         Check(recipe._outputs[0].resourceName == "PrefixWaterSuffix", "default option inserted in string");

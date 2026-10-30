@@ -73,6 +73,13 @@ namespace ChitakTech
                     changed = true;
                 candidate[setting.variable] = next;
             }
+            if (!recipe.ValidateSettingConditions(candidate, out string conditionError))
+            {
+                CTShared.LogError(conditionError, "ChitakTechISRU/ApplyRecipeSettingValues");
+                ScreenMessages.PostScreenMessage(new ScreenMessage(
+                    "Invalid recipe parameters: " + conditionError + " Previous values kept.", 7f, ScreenMessageStyle.UPPER_CENTER));
+                return true;
+            }
             if (!changed) return true;
             var resolved = recipe.WithSettingValues(candidate);
             if (!resolved.IsValid || !resolved.ValidateReferences(CTShared.Instance?.materialList, ConverterName))
