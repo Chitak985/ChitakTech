@@ -51,6 +51,27 @@ namespace ChitakTech
                         };
 
                         // Load stage order conditions
+                        if (stageNode.HasValue("returnOrder"))
+                            stage.returnOrder = ReadRequiredOrder(stageNode.GetValue("returnOrder"), "returnOrder");
+                        foreach (ConfigNode resultNode in stageNode.GetNodes("RESULT"))
+                        {
+                            var result = new MaintenanceResult { type = RequiredMaintenanceText(resultNode, "type") };
+                            switch (result.type)
+                            {
+                                case "powerfailVOID": case "powerfailSTOP": case "powerfailPAUSE":
+                                case "preventRunning": case "preventCharging": case "uncharge": case "unchargeConstant": break;
+                                case "explode":
+                                    result.radius = MaintenanceNumber(resultNode, "radius", null, 0, float.MaxValue);
+                                    result.temperature = MaintenanceNumber(resultNode, "temperature", null, -273.15, float.MaxValue);
+                                    break;
+                                case "massiveVesselExplode":
+                                    result.range = MaintenanceNumber(resultNode, "range", null, double.Epsilon, float.MaxValue / 4);
+                                    result.lifetime = MaintenanceNumber(resultNode, "lifetime", null, double.Epsilon);
+                                    break;
+                                default: throw new FormatException("Unknown maintenance RESULT type " + result.type);
+                            }
+                            stage.results.Add(result);
+                        }
                         foreach (string value in stageNode.GetValues("requiredOrdersAND"))
                             stage.requiredOrdersAND.UnionWith(ReadRequiredOrders(value, "requiredOrdersAND"));
                         foreach (string value in stageNode.GetValues("requiredOrdersOR"))
@@ -86,6 +107,9 @@ namespace ChitakTech
                         throw new FormatException("MAINTENANCE needs at least one STAGE");
 
                     // Verify stage orders in order conditions
+                    foreach (MaintenanceStage stage in definition.stages)
+                        if (stage.returnOrder.HasValue && !orders.Contains(stage.returnOrder.Value))
+                            throw new FormatException("returnOrder must refer to a stage in the same MAINTENANCE");
                     foreach (MaintenanceStage stage in definition.stages)
                         foreach (int required in stage.requiredOrdersAND
                             .Concat(stage.requiredOrdersOR.SelectMany(group => group))

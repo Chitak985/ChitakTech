@@ -136,6 +136,7 @@ namespace ChitakTech
 
         public void LateUpdate()
         {
+            UpdateExplosionVisuals();
             if (!HighLogic.LoadedSceneIsFlight || FlightGlobals.currentMainBody == null)
             {
                 if (_depositRenderInstances.Count > 0) DestroyDepositRenderers();

@@ -149,6 +149,8 @@
     <Compile Include="CTMathExpr.cs" />
     <Compile Include="MaterialSystem\MaterialDrop.cs" />
     <Compile Include="StorageEnvironment.cs" />
+    <Compile Include="CTShared\ExplosionRendering.cs" />
+    <Compile Include="PartModules\ChitakTechISRU\ISRUMaintenanceResults.cs" />
     <Compile Include="PartModules\StorageTransfers.cs" />
     <Compile Include="PartModules\ChitakTechDestructivePart.cs" />
     <Compile Include="PartModules\Storage\StorageEnvironment.cs" />

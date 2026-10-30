@@ -80,6 +80,9 @@ namespace ChitakTech
 {
     public static class CTShared
     {
+        public enum ChargablePartState { Off, On, Charging }
+        public sealed class ExplosionHost { public void MassiveVesselExplosion(Vessel v, double range, double lifetime) { } }
+        public static ExplosionHost Instance = new ExplosionHost();
         public enum SituationCondition { Landed, Splashed }
         public static void LogError(string message, string context) { }
         public static string GetStrValueFromCFG(ConfigNode node, string key, string fallback) => node.GetValue(key) ?? fallback;
@@ -99,6 +102,7 @@ namespace ChitakTech
     }
     public partial class ChitakTechISRURecipe
     {
+        public enum PowerfailResult { Void, Stop, Pause, Explode }
         private string _name = "Test recipe";
         public struct ResourceInput { }
         public struct ResourceOutput { }
@@ -110,6 +114,14 @@ namespace ChitakTech
     }
     public partial class ChitakTechISRU
     {
+        public bool isRunning;
+        public float chargePercent;
+        public CTShared.ChargablePartState state;
+        public readonly List<ChitakTechISRURecipe.PowerfailResult> results = new List<ChitakTechISRURecipe.PowerfailResult>();
+        private void TriggerPowerfail(Part p, ChitakTechISRURecipe.PowerfailResult result, double radius = 0, double temperature = 0)
+        { results.Add(result); if (result == ChitakTechISRURecipe.PowerfailResult.Void || result == ChitakTechISRURecipe.PowerfailResult.Stop) isRunning = false; }
+        public bool BlockRunning => MaintenanceBlocksRunning;
+        public bool BlockCharging => MaintenanceBlocksCharging;
         public ChitakTechISRURecipe _activeRecipe;
         public sealed class Runtime { public string planet, biome; }
         private Runtime _runtimeData = new Runtime();

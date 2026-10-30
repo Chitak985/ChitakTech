@@ -14,12 +14,13 @@ namespace ChitakTech
         protected double EffectiveChargeThreshold =>
             Math.Max(0, Math.Min(100, chargeThreshold * (ChargingBiome?.chargeThresholdMultiplier ?? 1)));
 
-        protected bool CanOperate => state != CTShared.ChargablePartState.Off
+        protected bool CanOperate => !MaintenanceBlocksRunning && state != CTShared.ChargablePartState.Off
             && (!chargingRequired || (chargePercent >= EffectiveChargeThreshold
                 && (state != CTShared.ChargablePartState.Charging || chargeWhileRunning)));
 
         public void HandleCharging(double dt)
         {
+            EnforceMaintenanceResults();
             _chargingSeconds = 0;
             _secondsBelowThreshold = chargingRequired && chargePercent < EffectiveChargeThreshold ? dt : 0;
             if (!chargingRequired || double.IsNaN(dt) || double.IsInfinity(dt) || dt <= 0) return;

@@ -110,7 +110,11 @@ namespace ChitakTech
                     : Math.Max(0, now - saved.lastUniversalTime);
                 saved.lastUniversalTime = now;
                 var before = saved.Active(definition);
-                saved.Advance(definition, elapsed, _maintenanceRuntime, () => UnityEngine.Random.value);
+                var triggered = new List<MaintenanceStage>();
+                saved.Advance(definition, elapsed, _maintenanceRuntime, () => UnityEngine.Random.value, triggered.Add);
+                foreach (var occurrence in triggered)
+                    if (ApplyMaintenanceResults(occurrence)) return;
+                EnforceMaintenanceResults();
                 var stage = saved.Active(definition);
                 if (stage != before) ClearParallaxTargetCache();
                 if (stage == null || !stage.canFix
@@ -141,6 +145,7 @@ namespace ChitakTech
                 ClearParallaxTargetCache();
             }
             _maintenanceRuntime = 0;
+            EnforceMaintenanceResults();
             UpdateMaintenanceDisplay();
         }
 

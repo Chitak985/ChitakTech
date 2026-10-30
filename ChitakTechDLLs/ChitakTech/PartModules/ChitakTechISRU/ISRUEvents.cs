@@ -9,6 +9,7 @@ namespace ChitakTech
                   groupName = "chitaktechisru")]
         public void EnableCharging()
         {
+            if (MaintenanceBlocksCharging) return;
             if (!chargingRequired) return;
             if (chargePercent >= 100f) return;
             state = CTShared.ChargablePartState.Charging;

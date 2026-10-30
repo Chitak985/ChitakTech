@@ -7,6 +7,8 @@ namespace ChitakTech
     // Kept independent of Unity so timer/order/chance behavior can be tested directly.
     public sealed class MaintenanceStage
     {
+        public int? returnOrder;
+        public readonly List<MaintenanceResult> results = new List<MaintenanceResult>();
         public int order;
         public string status;
         public double time, fixTime, chance = 1;
@@ -61,7 +63,8 @@ namespace ChitakTech
         {
             int index = definition.stages.FindIndex(s => s.order == activeOrder);
             if (index < 0 || !definition.stages[index].canFix) return;
-            activeOrder = index == 0 ? (int?)null : definition.stages[index - 1].order;
+            activeOrder = definition.stages[index].returnOrder
+                ?? (index == 0 ? (int?)null : definition.stages[index - 1].order);
             // Repair may activate a predecessor that a parallel failure originally skipped.
             if (activeOrder.HasValue) occurredOrders.Add(activeOrder.Value);
             // Start a fresh interval toward the repaired stage. Other parallel clocks retain
@@ -73,7 +76,7 @@ namespace ChitakTech
         }
 
         public void Advance(MaintenanceDefinition definition, double wallSeconds,
-            double runtimeSeconds, Func<double> random)
+            double runtimeSeconds, Func<double> random, Action<MaintenanceStage> triggered = null)
         {
             if (!Finite(wallSeconds) || wallSeconds < 0
                 || !Finite(runtimeSeconds) || runtimeSeconds < 0) return;
@@ -112,6 +115,7 @@ namespace ChitakTech
                     if (stage.chance >= 1 || (stage.chance > 0 && random() < stage.chance))
                     {
                         occurredOrders.Add(stage.order);
+                        triggered?.Invoke(stage);
                         activated = stage;
                     }
                 }
@@ -127,5 +131,11 @@ namespace ChitakTech
 
         internal static bool Finite(double value)
             => !double.IsNaN(value) && !double.IsInfinity(value);
+    }
+
+    public sealed class MaintenanceResult
+    {
+        public string type;
+        public double radius, temperature, range, lifetime;
     }
 }

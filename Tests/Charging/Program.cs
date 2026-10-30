@@ -13,6 +13,8 @@ namespace ChitakTech
     }
     public partial class ChitakTechISRU
     {
+        private bool MaintenanceBlocksRunning => false;
+        private void EnforceMaintenanceResults() { }
         public bool chargingRequired = true, chargeWhileRunning, resourcesAvailable = true;
         public float chargeThreshold = 90, chargePercent, chargeRate = 10, chargeDecayRate = 2,
             chargeDecayRateInactive, chargeDecayRateActive;

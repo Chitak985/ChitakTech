@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using ChitakTech;
 
@@ -26,6 +27,7 @@ internal static class Program
     }
     private static void Timers()
     {
+        ResultTests();
         var definition = Definition(Stage(1, 10), Stage(3, 10), Stage(2, 10));
         var state = new MaintenanceState();
         state.Advance(definition, 9, 0, () => 0);
@@ -54,6 +56,61 @@ internal static class Program
         definition.stages[0].chance = 0; state = new MaintenanceState();
         state.Advance(definition, 1000, 0, () => throw new Exception("zero chance should not roll"));
         Check(state.activeOrder == null, "chance zero never activates");
+    }
+
+    private static void ResultTests()
+    {
+        var definition = Definition(Stage(30, 1), Stage(20, 1), Stage(10, 1));
+        definition.stages[2].returnOrder = 30;
+        var saved = new MaintenanceState();
+        var triggers = new List<int>();
+        saved.Advance(definition, 3, 0, () => 0, s => triggers.Add(s.order));
+        Check(triggers.SequenceEqual(new[] { 30, 20, 10 }), "all crossed stages trigger in order");
+        saved.Repair(definition);
+        Check(saved.activeOrder == 30, "explicit returnOrder overrides predecessor");
+        var root = Config(out var stage);
+        stage.AddValue("returnOrder", 999);
+        Check(!new ChitakTechISRURecipe().ParseMaintenance(root), "undefined returnOrder rejected");
+        root = Config(out stage);
+        stage.AddNode("RESULT").AddValue("type", "explode");
+        Check(!new ChitakTechISRURecipe().ParseMaintenance(root), "explosion needs radius and temperature");
+        root = Config(out stage);
+        stage.AddNode("RESULT").AddValue("type", "unknown");
+        Check(!new ChitakTechISRURecipe().ParseMaintenance(root), "unknown result rejected");
+        root = Config(out stage);
+        var result = stage.AddNode("RESULT"); result.AddValue("type", "massiveVesselExplode"); result.AddValue("range", 100);
+        Check(!new ChitakTechISRURecipe().ParseMaintenance(root), "massive explosion needs lifetime");
+        result.AddValue("lifetime", 5);
+        Check(new ChitakTechISRURecipe().ParseMaintenance(root), "massive explosion valid");
+        root = Config(out stage);
+        stage.AddNode("RESULT").AddValue("type", "unchargeConstant");
+        var recipe = new ChitakTechISRURecipe();
+        Check(recipe.ParseMaintenance(root), "constant uncharge valid");
+        var converter = new ChitakTechISRU { _activeRecipe = recipe, chargePercent = 100, isRunning = true };
+        converter.State(recipe.maintenance[0]);
+        converter.Tick(10);
+        Check(converter.chargePercent == 0 && !converter.isRunning, "uncharge triggers VOID and drains charge");
+        Check(converter.BlockRunning && converter.BlockCharging, "constant uncharge blocks run and charge");
+        converter.chargePercent = 25; converter.isRunning = true;
+        converter.Tick(1);
+        Check(converter.chargePercent == 0 && !converter.isRunning, "constant result reenforced");
+        var snapshot = new ConfigNode(); converter.SaveState(snapshot);
+        var restored = new ChitakTechISRU { _activeRecipe = recipe }; restored.LoadState(snapshot);
+        Check(restored.BlockRunning && restored.BlockCharging, "loaded active stage retains restrictions");
+        foreach (string type in new[] { "powerfailVOID", "powerfailSTOP", "powerfailPAUSE", "preventRunning", "preventCharging", "uncharge" })
+        {
+            root = Config(out stage); stage.AddNode("RESULT").AddValue("type", type);
+            recipe = new ChitakTechISRURecipe();
+            Check(recipe.ParseMaintenance(root), type + " parses");
+            converter = new ChitakTechISRU { _activeRecipe = recipe, isRunning = true, chargePercent = 100,
+                state = CTShared.ChargablePartState.Charging };
+            converter.State(recipe.maintenance[0]); converter.Tick(10);
+            Check(type == "preventCharging" ? converter.state != CTShared.ChargablePartState.Charging
+                : !converter.isRunning, type + " takes effect");
+            int fired = converter.results.Count;
+            converter.Tick(1);
+            Check(converter.results.Count == fired, type + " is not retriggered every tick");
+        }
     }
     private static void ParsingAndMultipliers()
     {

@@ -6,6 +6,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="Program.cs" />
+    <Compile Include="../../ChitakTechDLLs/ChitakTech/PartModules/ChitakTechISRU/ISRUMaintenanceResults.cs" Link="ISRUMaintenanceResults.cs" />
     <Compile Include="Stubs.cs" />
     <Compile Include="../../ChitakTechDLLs/ChitakTech/PartModules/ChitakTechISRU/MaintenanceState.cs" Link="MaintenanceState.cs" />
     <Compile Include="../../ChitakTechDLLs/ChitakTech/PartModules/ChitakTechISRU/ISRUMaintenanceConfig.cs" Link="ISRUMaintenanceConfig.cs" />

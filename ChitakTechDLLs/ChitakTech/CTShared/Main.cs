@@ -71,6 +71,7 @@ namespace ChitakTech
 
         public void OnDestroy()
         {
+            ClearExplosionVisuals();
             if (_instance != this) return;
 
             GameEvents.onGUIApplicationLauncherReady.Remove(OnDepositsLauncherReady);
