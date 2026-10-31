@@ -1,0 +1,7 @@
+ManifestFileVersion: 0
+CRC: 2521086181
+AssetBundleManifest:
+  AssetBundleInfos:
+    Info_0:
+      Name: explosion-shaders
+      Dependencies: {}

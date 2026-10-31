@@ -146,10 +146,19 @@ namespace ChitakTech
             string previous = lastBiomePlanet + "/" + lastBiomeName;
             lastBiomePlanet = currentPlanet;
             lastBiomeName = currentBiome;
-            TriggerPowerfail(GetPowerfailContextPart(), ChitakTechISRURecipe.PowerfailResult.Void);
+            bool hadBatch = isRunning || batchProgress > 0 || resolvedRecipeTime > 0;
+            // A biome change always resets the converter, including an idle one. It is
+            // not a power shortage, so do not emit the generic powerfail/lost-input log.
+            ClearPassiveConsumption();
+            ResetPassiveTimers();
+            batchProgress = 0;
+            resolvedRecipeTime = 0;
+            isRunning = false;
+            statusDisplay = "Stopped (biome changed)";
             CTShared.Log("Converter \"" + ConverterName + "\" crossed from biome \""
                 + previous + "\" to \"" + currentPlanet + "/" + currentBiome
-                + "\"; the active batch was voided and the converter was stopped.",
+                + (hadBatch ? "\"; the batch was voided and the converter was stopped."
+                    : "\"; the idle converter was reset (no active batch)."),
                 "ChitakTechISRU/ResetForBiomeTransition");
             return true;
         }

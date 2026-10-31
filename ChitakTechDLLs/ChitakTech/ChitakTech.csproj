@@ -82,6 +82,9 @@
     <Reference Include="UnityEngine.CoreModule">
       <HintPath>$(KspRoot)\KSP_x64_Data\Managed\UnityEngine.CoreModule.dll</HintPath>
     </Reference>
+    <Reference Include="UnityEngine.AssetBundleModule">
+      <HintPath>$(KspRoot)\KSP_x64_Data\Managed\UnityEngine.AssetBundleModule.dll</HintPath>
+    </Reference>
     <Reference Include="UnityEngine.ImageConversionModule">
       <HintPath>$(KspRoot)\KSP_x64_Data\Managed\UnityEngine.ImageConversionModule.dll</HintPath>
     </Reference>
@@ -150,6 +153,7 @@
     <Compile Include="MaterialSystem\MaterialDrop.cs" />
     <Compile Include="StorageEnvironment.cs" />
     <Compile Include="CTShared\ExplosionRendering.cs" />
+    <Compile Include="CTShared\ExplosionVesselDestruction.cs" />
     <Compile Include="PartModules\ChitakTechISRU\ISRUMaintenanceResults.cs" />
     <Compile Include="PartModules\StorageTransfers.cs" />
     <Compile Include="PartModules\ChitakTechDestructivePart.cs" />

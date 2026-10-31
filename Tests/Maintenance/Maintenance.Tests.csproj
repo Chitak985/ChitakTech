@@ -5,6 +5,7 @@
     <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
   </PropertyGroup>
   <ItemGroup>
+    <None Include="../../ChitakTech/Parts/Resources/GravCollapser/EventHorizonProcessor/EventHorizonProcessor.cfg" Link="EventHorizonProcessor.cfg" CopyToOutputDirectory="PreserveNewest" />
     <Compile Include="Program.cs" />
     <Compile Include="../../ChitakTechDLLs/ChitakTech/PartModules/ChitakTechISRU/ISRUMaintenanceResults.cs" Link="ISRUMaintenanceResults.cs" />
     <Compile Include="Stubs.cs" />
