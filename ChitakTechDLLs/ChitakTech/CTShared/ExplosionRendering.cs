@@ -10,11 +10,19 @@ namespace ChitakTech
     {
         public sealed class ExplosionVisual
         {
-            public CelestialBody body;
-            public double latitude, longitude, altitude, radius, expiresAt;
+            public string bodyName;
+            public Vector3d scaledBodyOffset;
+            public double radius, startedAt, lifetime;
+            internal double previousAge = -1;
+            internal bool mainArrived, shockArrived;
+            internal float seed;
+            internal Light mainLight, shockLight;
+            internal CelestialBody Body => FlightGlobals.Bodies?.FirstOrDefault(b => b.bodyName == bodyName);
+            internal Vector3d ScaledPosition(CelestialBody body)
+                => (Vector3d)body.scaledBody.transform.position + scaledBodyOffset;
         }
         public readonly List<ExplosionVisual> explosionVisuals = new List<ExplosionVisual>();
-        private Game explosionGame;
+        private string explosionSaveFolder;
         private Material explosionMaterial;
         private Mesh explosionQuad;
         private bool explosionRendererRegistered, explosionShaderFailed;
@@ -30,12 +38,12 @@ namespace ChitakTech
             // Stop warp for the player hit by the blast, as part of handling their loss.
             if (HighLogic.LoadedSceneIsFlight && victims.Contains(FlightGlobals.ActiveVessel))
                 TimeWarp.SetRate(0, true);
-            if (explosionGame != HighLogic.CurrentGame) ClearExplosionVisuals();
-            explosionGame = HighLogic.CurrentGame;
-            explosionVisuals.Add(new ExplosionVisual { body = body,
-                latitude = body.GetLatitude(center), longitude = body.GetLongitude(center),
-                altitude = body.GetAltitude(center), radius = range,
-                expiresAt = Planetarium.GetUniversalTime() + lifetime });
+            if (explosionSaveFolder != HighLogic.SaveFolder) ClearExplosionVisuals();
+            explosionSaveFolder = HighLogic.SaveFolder;
+            explosionVisuals.Add(new ExplosionVisual { bodyName = body.bodyName,
+                scaledBodyOffset = ScaledSpace.LocalToScaledSpace(center) - (Vector3d)body.scaledBody.transform.position,
+                radius = range, startedAt = Planetarium.GetUniversalTime(), lifetime = lifetime,
+                seed = (Guid.NewGuid().GetHashCode() & 0xffff) / 100f });
             EnsureExplosionRenderer();
             Log("Massive explosion at " + body.bodyName + ": radius " + range
                 + " m, lifetime " + lifetime + " s, affected vessels " + victims.Count + ".",
@@ -74,6 +82,7 @@ namespace ChitakTech
             }
             if (!explosionRendererRegistered && explosionMaterial != null)
             {
+                Camera.onPreCull += ShakeExplosionCamera;
                 Camera.onPostRender += RenderExplosionVolumes;
                 explosionRendererRegistered = true;
             }
@@ -81,12 +90,23 @@ namespace ChitakTech
 
         private void UpdateExplosionVisuals()
         {
-            if (explosionGame != HighLogic.CurrentGame || HighLogic.LoadedScene == GameScenes.MAINMENU)
+            // KSP replaces Game instances when moving between flight and KSC. A
+            // stable save identity survives those changes and transient loading gaps.
+            if (HighLogic.LoadedScene == GameScenes.MAINMENU
+                || !string.IsNullOrEmpty(HighLogic.SaveFolder) && explosionSaveFolder != HighLogic.SaveFolder)
             { ClearExplosionVisuals(); return; }
+            if (HighLogic.CurrentGame == null) return;
             double now = Planetarium.GetUniversalTime();
-            explosionVisuals.RemoveAll(effect => effect.body == null || now >= effect.expiresAt);
+            for (int i = explosionVisuals.Count - 1; i >= 0; i--)
+            {
+                var effect = explosionVisuals[i];
+                double age = now - effect.startedAt;
+                if (age >= ExplosionAnimation.Duration(effect.lifetime))
+                { DestroyExplosionLights(effect); explosionVisuals.RemoveAt(i); }
+            }
             if (explosionVisuals.Count == 0) { ClearExplosionVisuals(); return; }
             EnsureExplosionRenderer();
+            UpdateExplosionLighting(now);
         }
 
         // Draw analytically in each KSP world camera, using that camera's depth buffer.
@@ -94,17 +114,24 @@ namespace ChitakTech
         // inside the fireball or when the sphere's back surface is beyond the far plane.
         private void RenderExplosionVolumes(Camera camera)
         {
-            if (explosionMaterial == null || explosionQuad == null || camera == null
-                || camera.cameraType != CameraType.Game
-                || !(HighLogic.LoadedSceneIsFlight || HighLogic.LoadedScene == GameScenes.SPACECENTER)) return;
-            bool scaled = ScaledCamera.Instance != null && camera == ScaledCamera.Instance.cam
-                || PlanetariumCamera.fetch != null && camera == PlanetariumCamera.Camera;
-            bool local = FlightCamera.fetch != null && FlightCamera.fetch.cameras != null && FlightCamera.fetch.cameras.Contains(camera)
-                || HighLogic.LoadedScene == GameScenes.SPACECENTER && camera == Camera.main;
-            if (!scaled && !local) return;
-            // Map has no local scenery. In flight BOTH scaled sky and local cameras
-            // need the effect, otherwise distant or very large blasts disappear.
-            if (!scaled && HighLogic.LoadedSceneIsFlight && MapView.MapIsEnabled) return;
+            try { DrawExplosionVolumes(camera); }
+            finally { RestoreExplosionCamera(camera); }
+        }
+
+        private bool ExplosionCamera(Camera camera, out bool scaled)
+        {
+            scaled = camera != null && (ScaledCamera.Instance != null && camera == ScaledCamera.Instance.cam
+                || PlanetariumCamera.fetch != null && camera == PlanetariumCamera.Camera);
+            bool local = camera != null && (FlightCamera.fetch != null && FlightCamera.fetch.cameras != null && FlightCamera.fetch.cameras.Contains(camera)
+                || HighLogic.LoadedScene == GameScenes.SPACECENTER && camera == Camera.main);
+            return camera != null && camera.cameraType == CameraType.Game && (scaled || local)
+                && (HighLogic.LoadedSceneIsFlight || HighLogic.LoadedScene == GameScenes.SPACECENTER)
+                && (scaled || !HighLogic.LoadedSceneIsFlight || !MapView.MapIsEnabled);
+        }
+
+        private void DrawExplosionVolumes(Camera camera)
+        {
+            if (explosionMaterial == null || explosionQuad == null || !ExplosionCamera(camera, out bool scaled)) return;
             explosionMaterial.SetMatrix("_Projection", GL.GetGPUProjectionMatrix(camera.projectionMatrix, camera.targetTexture != null));
             explosionMaterial.SetVector("_Forward", camera.transform.forward);
             explosionMaterial.SetVector("_Clip", new Vector4(camera.nearClipPlane, camera.farClipPlane, 0, 0));
@@ -115,21 +142,38 @@ namespace ChitakTech
             SetExplosionRay(camera, "10", 1, 0);
             SetExplosionRay(camera, "01", 0, 1);
             SetExplosionRay(camera, "11", 1, 1);
-            foreach (var effect in explosionVisuals)
-            {
-                if (effect.body == null || Planetarium.GetUniversalTime() >= effect.expiresAt) continue;
-                Vector3d position = effect.body.GetWorldSurfacePosition(effect.latitude, effect.longitude, effect.altitude);
-                double radius = effect.radius;
-                if (scaled)
-                {
-                    Vector3d scaledPosition = ScaledSpace.LocalToScaledSpace(position);
-                    radius = Vector3d.Distance(scaledPosition, ScaledSpace.LocalToScaledSpace(position + Vector3d.right * radius));
-                    position = scaledPosition;
-                }
-                Vector3d relative = (position - (Vector3d)camera.transform.position) / radius;
-                explosionMaterial.SetVector("_CenterRadius", new Vector4((float)relative.x, (float)relative.y, (float)relative.z, (float)radius));
-                if (explosionMaterial.SetPass(0)) Graphics.DrawMeshNow(explosionQuad, Matrix4x4.identity);
-            }
+            double now = Planetarium.GetUniversalTime();
+            // Opaque fireballs first; transparent shockwaves back-to-front afterwards.
+            foreach (var effect in explosionVisuals) DrawExplosion(effect, camera, scaled, now, false);
+            foreach (var effect in explosionVisuals.OrderByDescending(e => ExplosionDistance(e, camera, scaled)))
+                DrawExplosion(effect, camera, scaled, now, true);
+        }
+
+        private double ExplosionDistance(ExplosionVisual effect, Camera camera, bool scaled)
+        {
+            var body = effect.Body;
+            if (body == null || body.scaledBody == null) return 0;
+            Vector3d center = effect.ScaledPosition(body);
+            if (!scaled) center = ScaledSpace.ScaledToLocalSpace(center);
+            return Vector3d.Distance(center, camera.transform.position);
+        }
+
+        private void DrawExplosion(ExplosionVisual effect, Camera camera, bool scaled, double now, bool shock)
+        {
+            var body = effect.Body;
+            if (body == null || body.scaledBody == null) return; // Scene still loading; retain the record.
+            double age = now - effect.startedAt;
+            double scale = shock ? ExplosionAnimation.ShockScale(age) : ExplosionAnimation.MainScale(age, effect.lifetime);
+            float opacity = shock ? (float)ExplosionAnimation.ShockOpacity(age) : 1;
+            if (scale <= 0 || opacity <= 0) return;
+            Vector3d position = effect.ScaledPosition(body);
+            double radius = effect.radius * scale;
+            if (scaled) radius *= ScaledSpace.InverseScaleFactor;
+            else position = ScaledSpace.ScaledToLocalSpace(position);
+            Vector3d relative = (position - (Vector3d)camera.transform.position) / radius;
+            explosionMaterial.SetVector("_CenterRadius", new Vector4((float)relative.x, (float)relative.y, (float)relative.z, (float)radius));
+            explosionMaterial.SetVector("_Effect", new Vector4((float)(Math.Max(0, age) % 4096), effect.seed, opacity, shock ? 1 : 0));
+            if (explosionMaterial.SetPass(shock ? 1 : 0)) Graphics.DrawMeshNow(explosionQuad, Matrix4x4.identity);
         }
 
         private void SetExplosionRay(Camera camera, string corner, float x, float y)
@@ -143,7 +187,13 @@ namespace ChitakTech
 
         private void ClearExplosionVisuals()
         {
-            if (explosionRendererRegistered) Camera.onPostRender -= RenderExplosionVolumes;
+            if (explosionRendererRegistered)
+            {
+                Camera.onPreCull -= ShakeExplosionCamera;
+                Camera.onPostRender -= RenderExplosionVolumes;
+            }
+            RestoreAllExplosionCameras();
+            foreach (var effect in explosionVisuals) DestroyExplosionLights(effect);
             explosionRendererRegistered = false;
             explosionVisuals.Clear();
             if (explosionMaterial != null)

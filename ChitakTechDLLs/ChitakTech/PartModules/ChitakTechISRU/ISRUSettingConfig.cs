@@ -227,6 +227,6 @@ namespace ChitakTech
         }
 
         internal ChitakTechISRURecipe WithSettingValues(IDictionary<string, double> values)
-            => new ChitakTechISRURecipe(mainNode, _name, values).ScaledCopy(_settingRecipeScale);
+            => new ChitakTechISRURecipe(mainNode, _name, values, _environmentValues).ScaledCopy(_settingRecipeScale);
     }
 }

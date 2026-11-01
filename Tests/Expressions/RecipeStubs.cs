@@ -27,6 +27,8 @@ public sealed class ConfigNode
     public ConfigNode[] GetNodes(string key) => nodes.Where(n => n.name == key).ToArray();
     public bool HasNode(string key) => GetNode(key) != null;
     public void AddNode(ConfigNode node) => nodes.Add(node);
+    public ConfigNode AddNode(string name) { var node = new ConfigNode(name); nodes.Add(node); return node; }
+    public void SetValue(string key, object value) { values.RemoveAll(v => v.name == key); AddValue(key, value); }
     public void RemoveNode(string key) => nodes.Remove(GetNode(key));
     public void CopyTo(ConfigNode target)
     {
@@ -91,7 +93,7 @@ namespace ChitakTech
         public string biomeName;
         public bool hasResourceConfigurationError => false;
         public List<ChitakTechISRURecipe.ResourceOutput> outputs = new List<ChitakTechISRURecipe.ResourceOutput>();
-        public ChitakTechISRUBiomeConfig(ConfigNode node, string context = null, string converter = null) { biomeName = node.GetValue("name"); }
+        public ChitakTechISRUBiomeConfig(ConfigNode node, string context = null, string converter = null, bool allowZeroOutput = false) { biomeName = node.GetValue("name"); }
     }
     public partial class ChitakTechISRURecipe
     {

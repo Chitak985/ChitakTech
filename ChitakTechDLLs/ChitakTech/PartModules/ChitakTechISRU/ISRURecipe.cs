@@ -115,6 +115,7 @@ namespace ChitakTech
         public readonly List<ParallaxScatterRequirement> _parallaxScatters =
             new List<ParallaxScatterRequirement>();
         public readonly List<RecipeSetting> _settings = new List<RecipeSetting>();
+        internal bool _isGenerator;
         public double _recipeTime = 0;  // in seconds
         public string _recipeTimeExpression = "0";
         public double _biomeResourceScale = 1.0;
@@ -162,11 +163,14 @@ namespace ChitakTech
         /// inputs/outputs/materials, timing, control rules, and worker requirements.
         /// </summary>
         public ChitakTechISRURecipe(ConfigNode node, string ConverterName,
-            IDictionary<string, double> settingValues = null)
+            IDictionary<string, double> settingValues = null, IDictionary<string, string> environmentValues = null)
         {
             try
             {
                 ConfigNode sourceNode = node;
+                _isGenerator = node.GetValue("isGenerator") == "True";
+                _environmentValues = environmentValues;
+                HasEnvironmentVariables = RecipeEnvironment.Contains(node);
                 _name = node?.GetValue("name") ?? "Recipe";
                 bool configurationError = !LoadSettingDefinitions(node);
                 if (!configurationError && settingValues != null
@@ -174,6 +178,8 @@ namespace ChitakTech
                 { SettingError(settingError); configurationError = true; }
                 node = new ConfigNode();
                 sourceNode.CopyTo(node);
+                if (!RecipeEnvironment.Resolve(node, environmentValues, out string environmentError))
+                { CTShared.LogError(environmentError, "ChitakTechISRURecipe/environment"); configurationError = true; }
                 if (!ResolveSettingConfig(node, settingValues, true)) configurationError = true;
 
                 _name = node?.GetValue("name")?.Trim();
@@ -327,7 +333,7 @@ namespace ChitakTech
                         foreach (ConfigNode biomeNode in biomeNodes)
                         {
                             ChitakTechISRUBiomeConfig biomeConfig = new ChitakTechISRUBiomeConfig(
-                                biomeNode, ConverterName, _name);
+                                biomeNode, ConverterName, _name, _isGenerator);
                             if (biomeConfig.hasResourceConfigurationError)
                                 configurationError = true;
                             string biomeKey = string.IsNullOrEmpty(biomeConfig.biomeName)
@@ -469,7 +475,7 @@ namespace ChitakTech
                 foreach (ConfigNode outputNode in node.GetNodes("OUTPUT_RESOURCE"))
                 {
                     if (TryParseResourceOutput(outputNode, "Recipe \"" + _name + "\"",
-                            out ResourceOutput output))
+                            out ResourceOutput output, _isGenerator))
                         _outputs.Add(output);
                     else
                         configurationError = true;
@@ -542,7 +548,7 @@ namespace ChitakTech
                     if (string.IsNullOrEmpty(shape) || string.IsNullOrEmpty(size)
                         || string.IsNullOrEmpty(outVolume)
                         || !validOutputAmount || double.IsNaN(amount)
-                        || double.IsInfinity(amount) || amount <= 0.0)
+                        || double.IsInfinity(amount) || (_isGenerator ? amount < 0 : amount <= 0.0))
                     {
                         configurationError = true;
                         CTShared.LogError(
@@ -853,7 +859,7 @@ namespace ChitakTech
         }
 
         internal static bool TryParseResourceOutput(ConfigNode outputNode, string context,
-            out ResourceOutput output)
+            out ResourceOutput output, bool allowZero = false)
         {
             output = new ResourceOutput();
             string resourceName = outputNode?.GetValue("name")?.Trim();
@@ -864,8 +870,9 @@ namespace ChitakTech
                 return false;
             }
 
-            double amount = CTShared.GetDoubleValueFromCFG(outputNode, "amount", 0.0);
-            if (double.IsNaN(amount) || double.IsInfinity(amount) || amount <= 0.0)
+            double amount;
+            if (!CTMathExpr.TryEvaluateNumericExpression(outputNode.GetValue("amount") ?? "0", out amount, out _)) amount = double.NaN;
+            if (double.IsNaN(amount) || double.IsInfinity(amount) || (allowZero ? amount < 0 : amount <= 0.0))
             {
                 CTShared.LogError(context + ": OUTPUT_RESOURCE \"" + resourceName
                     + "\" has an invalid amount and was skipped.",
@@ -967,6 +974,7 @@ namespace ChitakTech
         public bool ValidateReferences(IEnumerable<ChitakTechMaterial> materials, string context)
         {
             if (!IsValid) return false;
+            if (HasEnvironmentVariables && _environmentValues == null) return true; // Checked against the vessel before work starts.
 
             bool valid = true;
             PartResourceLibrary resourceLibrary = PartResourceLibrary.Instance;
@@ -1224,6 +1232,9 @@ namespace ChitakTech
                 _workersEVA = _workersEVA,
                 _workersCREW = _workersCREW,
                 mainNode = mainNode,
+                _isGenerator = _isGenerator,
+                HasEnvironmentVariables = HasEnvironmentVariables,
+                _environmentValues = _environmentValues,
                 IsValid = IsValid,
             };
             copy.maintenance.AddRange(maintenance);

@@ -13,6 +13,9 @@
     <Compile Include="CargoRecipeTests.cs" />
     <Compile Include="ChoiceSettingTests.cs" />
     <Compile Include="SettingStateTests.cs" />
+    <Compile Include="GeneratorRecipeTests.cs" />
+    <Compile Include="../../ChitakTechDLLs/ChitakTech/RecipeEnvironment.cs" Link="RecipeEnvironment.cs" />
+    <Compile Include="../../ChitakTechDLLs/ChitakTech/GeneratorConfig.cs" Link="GeneratorConfig.cs" />
     <Compile Include="../../ChitakTechDLLs/ChitakTech/PartModules/ChitakTechISRU/ISRUSettings.cs" Link="ISRUSettings.cs" />
     <Compile Include="../../ChitakTechDLLs/ChitakTech/PartModules/ChitakTechISRU/ISRUSettingConfig.cs" Link="ISRUSettingConfig.cs" />
     <Compile Include="../../ChitakTechDLLs/ChitakTech/PartModules/ChitakTechISRU/ISRUCargoConfig.cs" Link="ISRUCargoConfig.cs" />

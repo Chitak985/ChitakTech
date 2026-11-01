@@ -120,7 +120,7 @@ namespace ChitakTech
                         || !CTMathExpr.TryInterpolateNumber(amountExpression, out amount,
                             out amountError)
                         || double.IsNaN(amount) || double.IsInfinity(amount)
-                        || amount <= 0.0
+                        || (_activeRecipe._isGenerator ? amount < 0 : amount <= 0.0)
                         || double.IsNaN(template.amountScale)
                         || double.IsInfinity(template.amountScale)
                         || template.amountScale <= 0.0
@@ -275,11 +275,11 @@ namespace ChitakTech
             return false;
         }
 
-        private bool TryResolveRecipeTime(ChitakTechISRUBiomeConfig biomeConfig,
+        protected virtual bool TryResolveRecipeTime(ChitakTechISRUBiomeConfig biomeConfig,
             out double recipeTime)
         {
             recipeTime = 0.0;
-            if (_activeRecipe == null) return false;
+            if (_activeRecipe == null || !RefreshEnvironmentRecipe()) return false;
             string expression = _activeRecipe._recipeTimeExpression;
             if (!TryResolveSettingReferences(expression, "recipeTime", out expression))
                 return false;

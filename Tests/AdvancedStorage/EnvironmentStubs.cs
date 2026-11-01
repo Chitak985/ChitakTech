@@ -44,7 +44,7 @@ namespace ChitakTech
         public struct ResourceInput { }
         public struct ResourceOutput { }
         public static bool TryParseResourceInput(ConfigNode n, string c, out ResourceInput input) { input = default; return true; }
-        public static bool TryParseResourceOutput(ConfigNode n, string c, out ResourceOutput output) { output = default; return true; }
+        public static bool TryParseResourceOutput(ConfigNode n, string c, out ResourceOutput output, bool allowZeroOutput = false) { output = default; return true; }
     }
     public partial class ChitakTechStorage
     {

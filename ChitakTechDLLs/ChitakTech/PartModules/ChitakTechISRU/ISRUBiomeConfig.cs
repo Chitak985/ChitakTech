@@ -140,7 +140,7 @@ namespace ChitakTech
         /// <param name="ConverterName">The name of the converter the biome config belongs to.</param>
         /// <param name="recipeName">The recipe name used when reporting invalid biome-local resources.</param>
         public ChitakTechISRUBiomeConfig(ConfigNode node, string ConverterName = "UNKNOWN",
-            string recipeName = "UNKNOWN")
+            string recipeName = "UNKNOWN", bool allowZeroOutput = false)
         {
             if (node != null)
             {
@@ -286,7 +286,7 @@ namespace ChitakTech
                 foreach (ConfigNode outputNode in node.GetNodes("OUTPUT_RESOURCE"))
                 {
                     if (ChitakTechISRURecipe.TryParseResourceOutput(outputNode, resourceContext,
-                            out ChitakTechISRURecipe.ResourceOutput output))
+                            out ChitakTechISRURecipe.ResourceOutput output, allowZeroOutput))
                         outputs.Add(output);
                     else
                         hasResourceConfigurationError = true;

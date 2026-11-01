@@ -10,6 +10,7 @@ namespace ChitakTech
     {
         private void OnGameSceneLoadRequested(GameScenes destination)
         {
+            SuspendExplosionLighting();
             CloseTransientWindows();
             DestroyDepositRenderers();
         }

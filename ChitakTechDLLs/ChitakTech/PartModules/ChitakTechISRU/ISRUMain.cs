@@ -235,7 +235,7 @@ namespace ChitakTech
         /// </summary>
         protected void LoadConfigFromPartInfo()
         {
-            ConfigNode moduleNode = CTShared.FindModuleConfigNode(part, ConverterName, "ChitakTechISRU");
+            ConfigNode moduleNode = GetConverterConfig();
             LoadConfig(moduleNode);
         }
 
@@ -1297,7 +1297,7 @@ namespace ChitakTech
             _fatalConfigError = false;
             // Peek moduleType early (before LoadConfigFromPartInfo runs its full parse) so the
             // kerbal-host / duplicate checks below can bail out before doing anything else.
-            ConfigNode precheckNode = CTShared.FindModuleConfigNode(part, ConverterName, "ChitakTechISRU");
+            ConfigNode precheckNode = GetConverterConfig();
             moduleType = IsPartEVAConfig(precheckNode)
                 ? "partEVA"
                 : IsKerbalEVAConfig(precheckNode)
@@ -1388,7 +1388,7 @@ namespace ChitakTech
             UpdateEventVisibility();
         }
 
-        protected void UpdateEventVisibility()
+        protected virtual void UpdateEventVisibility()
         {
             _maxInteractionDistance = _configMaxInteractionDistance;
             _maxDisplayDistance = _configMaxDisplayDistance;
@@ -1631,18 +1631,26 @@ namespace ChitakTech
             Events["TurnOffConverter"].active = state != CTShared.ChargablePartState.Off;
         }
 
-        public void FixedUpdate()
+        public virtual void FixedUpdate()
         {
             if (!HighLogic.LoadedSceneIsFlight) return;
             if (vessel == null || part == null) return;
             if (_fatalConfigError) return;
 
             _runtimeData.Update(vessel);
-            ResetForBiomeTransition();
-
             double dt = TimeWarp.fixedDeltaTime;
             if (double.IsNaN(dt) || double.IsInfinity(dt) || dt <= 0.0) return;
             _maintenanceRuntime = 0;
+            if (resolvedRecipeTime <= 0 && !RefreshEnvironmentRecipe())
+            {
+                statusDisplay = "Environment expressions unavailable (see log)";
+                SetActiveAnimationPlaying(false);
+                CaptureMaintenanceClockStatus();
+                TickMaintenance(dt);
+                return;
+            }
+            ResetForBiomeTransition();
+
             HandleCharging(dt);
             UpdateUI();
             ProcessPendingPassiveRefunds();
@@ -2202,7 +2210,7 @@ namespace ChitakTech
             return true;
         }
 
-        protected bool TryRunBatch(ChitakTechISRUBiomeConfig biomeConfig)
+        protected virtual bool TryRunBatch(ChitakTechISRUBiomeConfig biomeConfig)
         {
             _lastBatchFailureStatus = null;
             ChitakTechParallaxTarget parallaxTarget = null;

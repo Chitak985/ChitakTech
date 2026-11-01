@@ -128,6 +128,14 @@ namespace ChitakTech
 
                 string expression = template.Substring(opening + 1,
                     closing - opening - 1);
+                // A lone string variable can be inserted into a string template. Numeric
+                // consumers still reject it through TryInterpolateNumber/TryEvaluate.
+                if (vars != null && vars.TryGetValue(expression.Trim(), out string literal))
+                {
+                    builder.Append(literal);
+                    position = closing + 1;
+                    continue;
+                }
                 if (!TryEvaluate(expression, out double value, out string expressionError,
                         vars, randomFunction))
                 {

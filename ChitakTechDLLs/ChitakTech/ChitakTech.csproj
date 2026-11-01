@@ -153,6 +153,8 @@
     <Compile Include="MaterialSystem\MaterialDrop.cs" />
     <Compile Include="StorageEnvironment.cs" />
     <Compile Include="CTShared\ExplosionRendering.cs" />
+    <Compile Include="CTShared\ExplosionAnimation.cs" />
+    <Compile Include="CTShared\ExplosionLighting.cs" />
     <Compile Include="CTShared\ExplosionVesselDestruction.cs" />
     <Compile Include="PartModules\ChitakTechISRU\ISRUMaintenanceResults.cs" />
     <Compile Include="PartModules\StorageTransfers.cs" />
@@ -199,6 +201,11 @@
     <Compile Include="Parallax\ChitakTechParallaxIntegration.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="RuntimeData.cs" />
+    <Compile Include="RecipeEnvironment.cs" />
+    <Compile Include="GeneratorConfig.cs" />
+    <Compile Include="PartModules\ChitakTechISRU\ISRUEnvironmentVariables.cs" />
+    <Compile Include="PartModules\ChitakTechGenerator.cs" />
+    <Compile Include="PartModules\ChitakTechISRU\ISRUGenerator.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>

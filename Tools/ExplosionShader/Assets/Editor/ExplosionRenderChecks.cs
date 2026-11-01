@@ -28,9 +28,11 @@ public static class ExplosionRenderChecks
         camera.targetTexture = target;
         var readback = new Texture2D(128, 128, TextureFormat.RGB24, false);
         Vector4 sphere = new Vector4(0,0,3,1);
+        Vector4 effect = new Vector4(3,17,1,0);
         Camera.CameraCallback draw = current => {
             if (current != camera) return;
             material.SetVector("_CenterRadius", sphere);
+            material.SetVector("_Effect", effect);
             material.SetVector("_Forward", camera.transform.forward);
             material.SetVector("_Clip", new Vector4(camera.nearClipPlane, camera.farClipPlane,0,0));
             material.SetVector("_Fog", new Vector4(RenderSettings.fog ? (float)RenderSettings.fogMode : 0,
@@ -44,7 +46,7 @@ public static class ExplosionRenderChecks
                 material.SetVector("_Ray" + x + y, ray.direction / Vector3.Dot(ray.direction, camera.transform.forward));
                 material.SetVector("_Origin" + x + y, Vector3.zero);
             }
-            material.SetPass(0);
+            material.SetPass(effect.w > .5f ? 1 : 0);
             Graphics.DrawMeshNow(quad, Matrix4x4.identity);
         };
         Camera.onPostRender += draw;
@@ -64,13 +66,20 @@ public static class ExplosionRenderChecks
         {
             RenderSettings.fog = false;
             render();
-            check(readback.GetPixel(64,64).r > .8f && readback.GetPixel(0,0).r < .05f, "external sphere and silhouette");
+            check(readback.GetPixel(64,64).r > .2f && readback.GetPixel(0,0).r < .05f, "external sphere and silhouette");
+            float low = 1, high = 0;
+            for (int y=48;y<80;y++) for (int x=48;x<80;x++)
+            { float value = readback.GetPixel(x,y).g; low = Mathf.Min(low,value); high = Mathf.Max(high,value); }
+            check(high - low > .08f, "fireball has turbulent spatial detail");
+            Color before = readback.GetPixel(64,64);
+            effect.x += 2; render();
+            check(Mathf.Abs(before.g - readback.GetPixel(64,64).g) > .01f, "turbulence animates over time");
             sphere = new Vector4(0,0,0,100000000);
             render();
-            check(readback.GetPixel(64,64).r > .8f && readback.GetPixel(0,0).r > .8f, "inside 100,000-km sphere beyond far clip");
+            check(readback.GetPixel(64,64).r > .2f && readback.GetPixel(0,0).r > .2f, "inside 100,000-km sphere beyond far clip");
             sphere = new Vector4(0,0,0,100000000f / 6000);
             render();
-            check(readback.GetPixel(64,64).r > .8f, "scaled-space interior");
+            check(readback.GetPixel(64,64).r > .2f, "scaled-space interior");
             sphere = new Vector4(0,0,-3,1);
             render();
             check(readback.GetPixel(64,64).r < .05f, "sphere entirely behind viewer");
@@ -83,6 +92,17 @@ public static class ExplosionRenderChecks
             render();
             check(readback.GetPixel(64,64).b > .8f && readback.GetPixel(64,64).r < .05f, "nearer scenery occludes explosion");
             Object.DestroyImmediate(blocker); Object.DestroyImmediate(blue);
+            camera.backgroundColor = Color.blue;
+            effect = new Vector4(5,17,.2f,1); render();
+            check(readback.GetPixel(64,64).r > .01f && readback.GetPixel(64,64).b > .7f,
+                "shockwave is translucent and retains the background");
+            float visibleShock = readback.GetPixel(64,64).r;
+            effect.z = .05f; render();
+            check(readback.GetPixel(64,64).r < visibleShock, "shockwave fades as opacity decreases");
+            effect.z = 0; render();
+            check(readback.GetPixel(64,64).r < .01f, "shockwave disappears at zero opacity");
+            camera.backgroundColor = Color.black;
+            effect = new Vector4(3,17,1,0);
             RenderSettings.fog = true; RenderSettings.fogMode = FogMode.Linear;
             RenderSettings.fogStartDistance = 0; RenderSettings.fogEndDistance = 1;
             RenderSettings.fogColor = Color.blue;

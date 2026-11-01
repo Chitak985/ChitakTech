@@ -61,9 +61,10 @@ namespace ChitakTech
 
         [KSPEvent(guiActive = true, guiActiveEditor = false, guiName = "Start Converter",
         groupName = "chitaktechisru")]
-        public void StartConverter()
+        public virtual void StartConverter()
         {
-            if (isRunning) return;
+            if (isRunning || _fatalConfigError
+                || resolvedRecipeTime <= 0 && !RefreshEnvironmentRecipe()) return;
             if (needsMaintenance)
             {
                 ScreenMessages.PostScreenMessage(new ScreenMessage(
@@ -107,7 +108,7 @@ namespace ChitakTech
 
         [KSPEvent(guiActive = false, guiActiveEditor = false, guiName = "Stop Converter",
                   groupName = "chitaktechisru")]
-        public void StopConverter()
+        public virtual void StopConverter()
         {
             runOneCycle = false;
             isRunning = false;

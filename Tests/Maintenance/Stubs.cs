@@ -108,7 +108,7 @@ namespace ChitakTech
         public struct ResourceInput { }
         public struct ResourceOutput { }
         public static bool TryParseResourceInput(ConfigNode node, string context, out ResourceInput input) { input = default; return true; }
-        public static bool TryParseResourceOutput(ConfigNode node, string context, out ResourceOutput output) { output = default; return true; }
+        public static bool TryParseResourceOutput(ConfigNode node, string context, out ResourceOutput output, bool allowZeroOutput = false) { output = default; return true; }
         public bool ParseMaintenance(ConfigNode node) => LoadMaintenance(node);
         public ChitakTechISRUBiomeConfig biome = new ChitakTechISRUBiomeConfig(new ConfigNode());
         public ChitakTechISRUBiomeConfig GetBiomeConfig(string planet, string biomeName) => biome;
