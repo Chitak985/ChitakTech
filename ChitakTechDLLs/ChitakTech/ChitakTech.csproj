@@ -201,6 +201,9 @@
     <Compile Include="Parallax\ChitakTechParallaxIntegration.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="RuntimeData.cs" />
+    <Compile Include="BackgroundSurvival\SurvivalProfile.cs" />
+    <Compile Include="BackgroundSurvival\SurvivalTimeline.cs" />
+    <Compile Include="BackgroundSurvival\BackgroundSurvivalScenario.cs" />
     <Compile Include="RecipeEnvironment.cs" />
     <Compile Include="GeneratorConfig.cs" />
     <Compile Include="PartModules\ChitakTechISRU\ISRUEnvironmentVariables.cs" />

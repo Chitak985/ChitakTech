@@ -21,6 +21,7 @@ internal static class Program
             assertions += ChoiceSettingTests.Run();
             assertions += SettingStateTests.Run();
             assertions += GeneratorRecipeTests.Run();
+            assertions += SurvivalProfileTests.Run();
             if (Array.IndexOf(args, "--cargo") < 0)
             {
                 assertions += WashingRecipeTests.Run();

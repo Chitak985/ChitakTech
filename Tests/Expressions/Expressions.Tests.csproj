@@ -15,6 +15,8 @@
     <Compile Include="ChoiceSettingTests.cs" />
     <Compile Include="SettingStateTests.cs" />
     <Compile Include="GeneratorRecipeTests.cs" />
+    <Compile Include="SurvivalProfileTests.cs" />
+    <Compile Include="../../ChitakTechDLLs/ChitakTech/BackgroundSurvival/SurvivalProfile.cs" Link="SurvivalProfile.cs" />
     <Compile Include="../../ChitakTechDLLs/ChitakTech/RecipeEnvironment.cs" Link="RecipeEnvironment.cs" />
     <Compile Include="../../ChitakTechDLLs/ChitakTech/GeneratorConfig.cs" Link="GeneratorConfig.cs" />
     <Compile Include="../../ChitakTechDLLs/ChitakTech/PartModules/ChitakTechISRU/ISRUSettings.cs" Link="ISRUSettings.cs" />
