@@ -318,34 +318,47 @@ internal static class Program
 
     private static int Main()
     {
-        try { Timers(); ParsingAndMultipliers(); RepairsAndPersistence(); HistoryConditions(); ProcessorConfig(); Console.WriteLine(assertions + " assertions passed."); return 0; }
+        try { Timers(); ParsingAndMultipliers(); RepairsAndPersistence(); HistoryConditions(); SequentialWearConfig(); Console.WriteLine(assertions + " assertions passed."); return 0; }
         catch (Exception error) { Console.Error.WriteLine(error); return 1; }
     }
 
-    private static void ProcessorConfig()
+    private static void SequentialWearConfig()
     {
-        // Exercise the shipped part config, not a second hand-written copy of its stages.
-        var root = new ConfigNode();
-        var stack = new Stack<ConfigNode>(); stack.Push(root);
-        string pending = null;
-        foreach (string raw in System.IO.File.ReadAllLines(System.IO.Path.Combine(AppContext.BaseDirectory, "EventHorizonProcessor.cfg")))
+        // Test-owned progression with parallel faults; independent of part balancing.
+        var module = new ConfigNode();
+        var maintenance = module.AddNode("MAINTENANCE");
+        maintenance.AddValue("name", "Test stabilizers");
+        maintenance.AddValue("statusOptimal", "Like New");
+        string[] expected = { "Optimal", "Normal", "Worn Out", "Old", "Very Old", "Dangerous Condition", "Meltdown" };
+        for (int i = 0; i < expected.Length; i++)
         {
-            string line = raw.Split(new[] { "//" }, StringSplitOptions.None)[0].Trim();
-            if (line.Length == 0) continue;
-            if (line == "{") { stack.Push(stack.Peek().AddNode(pending)); continue; }
-            if (line == "}") { stack.Pop(); continue; }
-            int equals = line.IndexOf('=');
-            if (equals < 0) pending = line;
-            else stack.Peek().AddValue(line.Substring(0, equals).Trim(), line.Substring(equals + 1).Trim());
+            var stage = maintenance.AddNode("STAGE");
+            stage.AddValue("order", (7-i)*1000); stage.AddValue("status", expected[i]);
+            stage.AddValue("time", (i+1)*10); stage.AddValue("tickOff", true);
+            stage.AddValue("canFix", false);
+            if (i == expected.Length-1)
+            {
+                var result = stage.AddNode("RESULT"); result.AddValue("type", "massiveVesselExplode");
+                result.AddValue("range", 100); result.AddValue("lifetime", 10);
+            }
         }
-        var module = root.GetNodes("PART")[0].GetNodes("MODULE").First(n => n.GetValue("name") == "ChitakTechISRU");
+        for (int i = 0; i < 5; i++)
+        {
+            int wearOrder = 6000-i*1000;
+            var fault = maintenance.AddNode("STAGE");
+            fault.AddValue("order", 900-i); fault.AddValue("status", "Alignment fault " + i);
+            fault.AddValue("time", 15); fault.AddValue("tickRuntime", true);
+            fault.AddValue("ignoreOrder", true); fault.AddValue("chance", 0.5);
+            fault.AddValue("requiredOrdersAND", wearOrder);
+            fault.AddValue("requiredOrderNOT", wearOrder-1000);
+            fault.AddValue("returnOrder", wearOrder);
+        }
         var recipe = new ChitakTechISRURecipe();
-        Check(recipe.ParseMaintenance(module), "processor configuration is valid");
-        Check(recipe.maintenance.Count == 1, "shipped processor maintenance loads");
+        Check(recipe.ParseMaintenance(module), "sequential wear configuration is valid");
+        Check(recipe.maintenance.Count == 1, "test maintenance loads");
         var definition = recipe.maintenance[0];
         var state = new MaintenanceState();
         var triggered = new List<string>();
-        string[] expected = { "Optimal", "Normal", "Worn Out", "Old", "Very Old", "Dangerous Condition", "Meltdown" };
         foreach (string name in expected)
         {
             var stage = definition.stages.Single(s => s.status == name);
@@ -354,7 +367,7 @@ internal static class Program
             state.Advance(definition, 1, 0, () => 1, s => triggered.Add(s.status));
             Check(state.activeOrder == stage.order, name + " follows the full preceding wear interval");
         }
-        Check(triggered.SequenceEqual(expected), "processor ages through every stage before meltdown");
+        Check(triggered.SequenceEqual(expected), "sequential wear visits every stage before meltdown");
         foreach (var fault in definition.stages.Where(s => s.ignoreOrder))
         {
             var entry = definition.stages.Single(s => s.order == fault.returnOrder);

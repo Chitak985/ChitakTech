@@ -1,5 +1,4 @@
 using System;
-using System.IO;
 using System.Linq;
 using ChitakTech;
 
@@ -19,11 +18,11 @@ static class Program
     {
         try
         {
-            var config = ConfigNode.ReadFixture(Path.Combine(AppContext.BaseDirectory, "WoodenBasin.cfg")).GetNode("PART");
+            var config = ConstructionConfig.CreatePart();
             var prefab = Instance(config);
             var moduleConfig = config.GetNodes("MODULE").Single(n => n.GetValue("name") == "ChitakTechPart");
             prefab.OnLoad(moduleConfig);
-            Check(prefab.CostConfigurationValid, "actual WoodenBasin costs parse");
+            Check(prefab.CostConfigurationValid, "test material costs parse");
             Check(prefab.MaterialCosts.Count == 1 && prefab.MaterialCosts[0].shape == "HalfHollowLog", "material cost retained");
             Check(prefab.MaterialCosts[0].parameters.Count() == 4, "duplicate height/radius bounds retained");
             var clone = Instance(config);

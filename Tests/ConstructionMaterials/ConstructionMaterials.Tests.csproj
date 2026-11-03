@@ -42,6 +42,8 @@
     <ProjectReference Include="..\..\ChitakTechDLLs\ChitakTech\ChitakTech.csproj">
       <Project>{64D42EE0-86B3-4703-9A9C-C2438C639369}</Project>
       <Name>ChitakTech</Name>
+      <!-- Test builds must not deploy into the GameData mod folder. -->
+      <AdditionalProperties>PostBuildEvent=</AdditionalProperties>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

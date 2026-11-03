@@ -1,6 +1,5 @@
 using System;
 using System.Globalization;
-using System.IO;
 using System.Linq;
 using ChitakTech;
 
@@ -10,7 +9,7 @@ internal static class ConstructionCostTests
     {
         int count = 0;
         void Check(bool ok, string error) { count++; if (!ok) throw new Exception(error); }
-        var part = ConfigNode.ReadFixture(Path.Combine(AppContext.BaseDirectory, "WoodenWashingBasin.cfg")).GetNode("PART");
+        var part = ConstructionConfig.CreatePart();
         var node = part.GetNodes("MODULE").Single(n => n.GetValue("name") == "ChitakTechPart").GetNode("MATERIAL_COST");
         Check(ChitakTechConstructionMaterials.TryParseCost(node, "WoodenWashingBasin", out var cost), "Basin cost parses");
         Check(cost.name == "Wood" && cost.shape == "HalfHollowLog" && cost.size == "none" && cost.amount == 2, "Basin cost identity");

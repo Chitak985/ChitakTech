@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
-using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
 using ChitakTech;
@@ -12,17 +11,18 @@ internal static class WashingRecipeTests
     {
         int count = 0;
         void Check(bool ok, string error) { count++; if (!ok) throw new Exception(error); }
-        var node = ConfigNode.ReadFixture(Path.Combine(AppContext.BaseDirectory, "washing.cfg"))
-            .GetNodes("CHITAKTECHISRU_RECIPE").Single();
+        var node = CreateRecipe();
         CTShared.Errors.Clear();
         var recipe = new ChitakTechISRURecipe(node, "Washing Basin");
         Check(recipe.IsValid, string.Join("; ", CTShared.Errors));
-        var waterNode = ConfigNode.ReadFixture(Path.Combine(AppContext.BaseDirectory, "materials.cfg"))
-            .GetNodes("CHITAKTECH_MATERIAL").Single(n => n.GetValue("name") == "Water");
         var definition = new ChitakTechMaterial
         {
-            name = "Water", shapes = waterNode.GetNode("SHAPES").GetValues("name").ToList(),
-            parameters = waterNode.GetNode("PARAMS").values.ToDictionary(v => v.name, v => v.value)
+            name = "Water", shapes = new List<string> { "Fluid" },
+            parameters = new Dictionary<string, string>
+            {
+                { "m3", "DER[amount*volume]" }, { "pH", "7" },
+                { "tts", "0" }, { "turbidity", "0" }
+            }
         };
         Check(recipe.ValidateReferences(new[] { definition }, "test"), string.Join("; ", CTShared.Errors));
         var input = recipe._inputMaterials.Single();
@@ -45,6 +45,33 @@ internal static class WashingRecipeTests
             produced[assignment.Key] = value;
         }
         Check(double.Parse(produced["tts"], CultureInfo.InvariantCulture) == 19000, "950g/0.05m3 must yield 19,000 mg/L");
+        double turbidity = double.Parse(produced["turbidity"], CultureInfo.InvariantCulture);
+        Check(turbidity >= 19000.0/60 && turbidity <= 19000.0/25,
+            "later parameters see the updated suspended-solids value");
         return count;
+    }
+
+    private static ConfigNode CreateRecipe()
+    {
+        // Only the behavior under test: whole cm3 units, repeated bounds, INMAT,
+        // random expressions, and an ordered parameter depending on an earlier one.
+        var recipe = new ConfigNode("CHITAKTECHISRU_RECIPE");
+        recipe.AddValue("name", "Test water treatment"); recipe.AddValue("recipeTime", 600);
+        var input = recipe.AddNode("INPUT_MATERIAL");
+        input.AddValue("id", "water"); input.AddValue("name", "Water");
+        input.AddValue("shape", "Fluid"); input.AddValue("size", "none"); input.AddValue("amount", 50000);
+        var conditions = input.AddNode("PARAMS");
+        conditions.AddValue("m3", "EM0.049"); conditions.AddValue("m3", "EL0.051");
+        conditions.AddValue("pH", "EM5.5"); conditions.AddValue("pH", "EL9.0");
+        conditions.AddValue("tts", "EL2000"); conditions.AddValue("turbidity", "EL500");
+        var output = recipe.AddNode("OUTPUT_MATERIAL");
+        output.AddValue("id", "washwater"); output.AddValue("name", "Water");
+        output.AddValue("shape", "Fluid"); output.AddValue("size", "none"); output.AddValue("amount", 50000);
+        output.AddValue("outVolume", "0.000001");
+        var parameters = output.AddNode("PARAMS");
+        parameters.AddValue("pH", "[Min(9.2,Max(5.0,(INMAT:water:pH)+randf(-0.3,0.2)))]");
+        parameters.AddValue("tts", "[(INMAT:water:tts)+(950/(INMAT:water:m3))]");
+        parameters.AddValue("turbidity", "[tts/randf(25,60)]");
+        return recipe;
     }
 }

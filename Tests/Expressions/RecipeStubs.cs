@@ -3,7 +3,6 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
-using System.IO;
 using System.Linq;
 
 public sealed class ConfigNode
@@ -36,26 +35,7 @@ public sealed class ConfigNode
         foreach (var value in values) target.AddValue(value.name, value.value);
         foreach (var node in nodes) { var copy = new ConfigNode(); node.CopyTo(copy); target.AddNode(copy); }
     }
-    // The checked-in fixture uses line-separated braces; retain repeated values exactly.
-    // ModuleManager NEEDS suffixes are stripped as if dependencies are installed.
-    public static ConfigNode ReadFixture(string path)
-    {
-        var root = new ConfigNode();
-        var stack = new Stack<ConfigNode>(); stack.Push(root);
-        string pending = null;
-        foreach (string raw in File.ReadLines(path))
-        {
-            string line = raw.Split(new[] { "//" }, StringSplitOptions.None)[0].Trim();
-            if (line.Length == 0) continue;
-            if (line == "{") { var next = new ConfigNode(pending.Split(':')[0]); stack.Peek().AddNode(next); stack.Push(next); pending = null; }
-            else if (line == "}") stack.Pop();
-            else if (line.Contains("="))
-            { int split = line.IndexOf('='); stack.Peek().AddValue(line.Substring(0, split).Trim(), line.Substring(split + 1).Trim()); }
-            else pending = line;
-        }
-        if (stack.Count != 1) throw new FormatException("Unbalanced fixture nodes.");
-        return root;
-    }
+
 }
 public enum ResourceFlowMode { STAGE_PRIORITY_FLOW }
 public class PartResourceLibrary
