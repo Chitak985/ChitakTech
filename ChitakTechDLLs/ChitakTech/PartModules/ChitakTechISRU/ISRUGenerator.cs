@@ -15,6 +15,20 @@ namespace ChitakTech
         private ConfigNode pendingGeneratorBatch;
         private string generatorPreparationError;
 
+        protected virtual bool HideGeneratorVoidMessage => false;
+
+        protected void TryAutoStartGenerator()
+        {
+            if (isRunning || _fatalConfigError || needsMaintenance
+                || _activeRecipe == null || _runtimeData == null) return;
+            if (resolvedRecipeTime <= 0 && !RefreshEnvironmentRecipe()) return;
+            state = CTShared.ChargablePartState.On;
+            // Check silent prerequisites before using the normal Start path, which
+            // displays messages for a player's unsuccessful manual start attempt.
+            if (CanOperate && IsAtRequiredDeposit(GetEffectiveBiomeConfig())) StartConverter();
+            if (!isRunning) state = CTShared.ChargablePartState.Off;
+        }
+
         private bool GeneratorPreparationFailed(string error)
         {
             if (generatorPreparationError != error)
@@ -149,7 +163,7 @@ namespace ChitakTech
 
         private bool DiscardGeneratorBatch()
         {
-            if (Time.realtimeSinceStartup - generatorLastNotice >= 3)
+            if (!HideGeneratorVoidMessage && Time.realtimeSinceStartup - generatorLastNotice >= 3)
             {
                 ScreenMessages.PostScreenMessage(ConverterName + ": output could not be stored; entire batch discarded.",
                     4f, ScreenMessageStyle.UPPER_CENTER);

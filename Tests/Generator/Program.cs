@@ -21,7 +21,7 @@ public class ConfigNode
     public void RemoveNode(string n) => nodes.Remove(GetNode(n));
     public void CopyTo(ConfigNode n) { foreach(var p in values)n.AddValue(p.Key,p.Value); foreach(var c in nodes){var copy=n.AddNode(c.name);c.CopyTo(copy);} }
 }
-public class Part { public List<object> Modules = new List<object>(); public double stock, stockCapacity=100; }
+public class Part { public List<object> Modules = new List<object>(); public double stock, stockCapacity=100; public AvailablePart partInfo = new AvailablePart(); }
 public class Vessel { public List<Part> parts = new List<Part>(); }
 public enum ResourceFlowMode { STAGE_PRIORITY_FLOW }
 public enum ScreenMessageStyle { UPPER_CENTER }
@@ -35,6 +35,8 @@ namespace ChitakTech
         public static CTShared Instance=new CTShared(); public List<ChitakTechMaterial> materialList=new List<ChitakTechMaterial>();
         public static bool IsFinite(double n)=>!double.IsNaN(n)&&!double.IsInfinity(n);
         public static void LogError(string s,string c) { throw new Exception(s); }
+        public static void LogWarning(string s,string c) { }
+        public enum ChargablePartState { Off, On }
     }
     public class ChitakTechMaterial { public string name="Wood"; }
     public class ChitakTechMaterialInstance
@@ -76,10 +78,10 @@ namespace ChitakTech
     public partial class ChitakTechISRU
     {
         public Vessel vessel=new Vessel(); public Part part=new Part(); public bool isRunning=true,runOneCycle; public double batchProgress=1,resolvedRecipeTime=1;
-        public string ConverterName="Test generator"; ChitakTechISRURecipe _activeRecipe=new ChitakTechISRURecipe();
+        public string ConverterName="Test generator"; protected ChitakTechISRURecipe _activeRecipe=new ChitakTechISRURecipe();
         private struct PreparedResourceOutput { public string name; public double amount; }
         List<PreparedResourceOutput> PrepareResourceOutputs(ChitakTechISRUBiomeConfig b)=>new List<PreparedResourceOutput>();
-        bool RefreshEnvironmentRecipe()=>false;
+        bool RefreshEnvironmentRecipe()=>environmentAvailable;
         bool TryResolveInputMaterialOutputs(List<ChitakTechISRURecipe.ResourceOutputMaterial> a,Dictionary<string,ChitakTechMaterialInstance>b,out List<ChitakTechISRURecipe.ResourceOutputMaterial> c,out Dictionary<string,ChitakTechISRURecipe.ResourceOutputMaterial>d,double e){c=null;d=null;return false;}
         bool TryResolveMaterialReferences(string a,Dictionary<string,ChitakTechMaterialInstance>b,Dictionary<string,ChitakTechISRURecipe.ResourceOutputMaterial>c,bool d,string e,out string f){f=a;return true;}
         bool TryCreateOutputMaterialReferenceValue(ChitakTechISRURecipe.ResourceOutputMaterial a,ChitakTechMaterial b,out ChitakTechISRURecipe.ResourceOutputMaterial c){c=a;return true;}
@@ -120,6 +122,51 @@ class Program
         var unloaded=new ChitakTechISRU();unloaded.LoadBeforeStart(saved);
         Check(unloaded.Save().GetNode("GENERATOR_BATCH").GetNode("RESOURCE").GetValue("amount")=="2","saving before OnStart retains pending batch");
         g.Plan(9,2);g.Stop();Check(g.batchProgress==0&&g.resolvedRecipeTime==0&&!g.Save().HasNode("GENERATOR_BATCH"),"stop discards progress and pending output");
-        Console.WriteLine(checks+" generator transaction assertions passed.");
+        GeneratorOptions();
+        Console.WriteLine(checks+" generator assertions passed.");
+    }
+
+    static void GeneratorOptions()
+    {
+        var g = new ChitakTechGenerator { isRunning = false };
+        Check(!g.alwaysOn && !g.hideVoidMessage, "new options default off");
+        g.OnStart(StartState.None); g.FixedUpdate();
+        Check(!g.isRunning && g.Events["StartConverter"].active, "ordinary generator remains manually started");
+        g.StartConverter();
+        Check(g.isRunning && g.Events["StopConverter"].active, "ordinary generator keeps stop control");
+        g.StopConverter();
+        g.alwaysOn = true; g.FixedUpdate();
+        Check(g.isRunning && g.state == CTShared.ChargablePartState.On, "always-on starts automatically");
+        Check(new[] { "StartConverter", "StopConverter" }.All(n => !g.Events[n].active
+            && !g.Events[n].guiActive && !g.Events[n].guiActiveUnfocused && !g.Events[n].guiActiveEditor)
+            && !g.Actions["StopConverterAction"].active, "always-on hides all manual start and stop controls");
+        g.batchProgress = 0.5; g.resolvedRecipeTime = 2; g.FixedUpdate();
+        Check(g.batchProgress == 0.5 && g.resolvedRecipeTime == 2, "automatic retry leaves a running batch intact");
+        g.stopDuringNextTick = true; g.FixedUpdate();
+        Check(g.isRunning && g.batchProgress == 0.5, "automatically resumes a paused batch after shared simulation stops it");
+        g.StopConverter(); g.needsMaintenance = true; g.FixedUpdate();
+        Check(!g.isRunning, "required maintenance prevents automatic start");
+        g.needsMaintenance = false; g.maintenanceBlocksRunning = true; g.FixedUpdate();
+        Check(!g.isRunning, "preventRunning maintenance result still blocks automatic start");
+        g.maintenanceBlocksRunning = false; g.atDeposit = false; g.FixedUpdate();
+        Check(!g.isRunning, "missing required deposit blocks automatic start");
+        g.atDeposit = true; g.environmentAvailable = false; g.FixedUpdate();
+        Check(!g.isRunning, "unresolved environment blocks automatic start");
+        g.environmentAvailable = true; g.FixedUpdate();
+        Check(g.isRunning, "generator retries as soon as prerequisites recover");
+        g.StopConverter(); HighLogic.LoadedSceneIsFlight = false; g.FixedUpdate();
+        Check(!g.isRunning, "always-on does not run in the editor");
+        HighLogic.LoadedSceneIsFlight = true; g._fatalConfigError = true; g.FixedUpdate();
+        Check(!g.isRunning, "invalid configuration never autostarts");
+        g._fatalConfigError = false; g.isEnabled = false; g.FixedUpdate();
+        Check(!g.isRunning, "disabled module never autostarts");
+
+        var quiet = new ChitakTechGenerator { hideVoidMessage = true };
+        quiet.part.stockCapacity = 0; quiet.Plan(5, 0);
+        int notices = ScreenMessages.count;
+        Check(quiet.Complete() && quiet.part.stock == 0 && ScreenMessages.count == notices,
+            "hidden void message still discards output and completes the interval");
+        quiet.hideVoidMessage = false; quiet.Plan(5, 0); quiet.Complete();
+        Check(ScreenMessages.count == notices + 1, "default notification still works after a silent discard");
     }
 }

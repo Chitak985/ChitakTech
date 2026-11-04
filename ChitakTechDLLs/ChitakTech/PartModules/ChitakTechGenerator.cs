@@ -9,7 +9,11 @@ namespace ChitakTech
         [KSPField(guiActive = true, guiActiveEditor = true, guiName = "Name")]
         public string displayName = "Unknown Generator";
         [KSPField] public string interval = "1";
+        [KSPField] public bool alwaysOn = false;
+        [KSPField] public bool hideVoidMessage = false;
         private bool warnedName;
+
+        protected override bool HideGeneratorVoidMessage => hideVoidMessage;
 
         protected override ConfigNode GetConverterConfig()
         {
@@ -26,6 +30,8 @@ namespace ChitakTech
                 warnedName = true;
             }
             interval = source.GetValue("interval") ?? "1";
+            alwaysOn = bool.TryParse(source.GetValue("alwaysOn"), out bool autoRun) && autoRun;
+            hideVoidMessage = bool.TryParse(source.GetValue("hideVoidMessage"), out bool hideMessage) && hideMessage;
             try { return GeneratorConfig.Build(source, displayName, interval); }
             catch (FormatException ex)
             { CTShared.LogError(ex.Message, "ChitakTechGenerator/config"); return null; }
@@ -63,6 +69,11 @@ namespace ChitakTech
         {
             state = isRunning ? CTShared.ChargablePartState.On : CTShared.ChargablePartState.Off;
             base.FixedUpdate();
+            // Retry after the shared engine has refreshed the environment and maintenance.
+            // A biome change or power failure may have stopped us during this tick.
+            if (alwaysOn && HighLogic.LoadedSceneIsFlight && enabled && isEnabled
+                && part != null && vessel != null)
+                TryAutoStartGenerator();
         }
         protected override void UpdateEventVisibility()
         {
@@ -75,10 +86,15 @@ namespace ChitakTech
             Events["StartConverter"].guiName = "Start generator";
             Events["StartConverter"].active = Events["StartConverter"].guiActive = !isRunning;
             Events["StopConverter"].guiName = "Stop generator";
+            if (alwaysOn)
+                foreach (string name in new[] { "StartConverter", "StopConverter" })
+                    Events[name].active = Events[name].guiActive = Events[name].guiActiveEditor
+                        = Events[name].guiActiveUnfocused = false;
             Events["ChangeRecipeParameters"].guiActiveEditor = !isRunning
                 && Events["ChangeRecipeParameters"].active;
             Actions["StartConverterAction"].guiName = "Start generator";
             Actions["StopConverterAction"].guiName = "Stop generator";
+            Actions["StartConverterAction"].active = Actions["StopConverterAction"].active = !alwaysOn;
         }
         protected override bool TryRunBatch(ChitakTechISRUBiomeConfig biome) => CompleteGeneratorBatch(biome);
         protected override bool TryResolveRecipeTime(ChitakTechISRUBiomeConfig biome, out double time)
