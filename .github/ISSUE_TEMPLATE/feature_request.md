@@ -8,15 +8,15 @@ type: Feature
 
 ---
 
-## Type of Feature:
-[ ] Deposit
-[ ] DLL-related
-[ ] Material
-[ ] MM Patch
-[ ] Part
-[ ] Recipe
-[ ] Resource
-[x] Other/I don't know
+## Type of Feature(s):
+- [ ] Deposit
+- [ ] DLL-related
+- [ ] Material
+- [ ] MM Patch
+- [ ] Part
+- [ ] Recipe
+- [ ] Resource
+- [x] Other/I don't know
 
 ## Description
 [Description of the problem here]
