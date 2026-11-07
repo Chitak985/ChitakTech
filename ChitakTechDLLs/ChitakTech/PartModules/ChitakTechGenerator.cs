@@ -12,6 +12,8 @@ namespace ChitakTech
         [KSPField] public bool alwaysOn = false;
         [KSPField] public bool hideVoidMessage = false;
         private bool warnedName;
+        private ChitakTechISRURecipe.PowerfailResult powerfail = ChitakTechISRURecipe.PowerfailResult.Void;
+        private bool environmentFailed;
 
         protected override bool HideGeneratorVoidMessage => hideVoidMessage;
 
@@ -32,7 +34,11 @@ namespace ChitakTech
             interval = source.GetValue("interval") ?? "1";
             alwaysOn = bool.TryParse(source.GetValue("alwaysOn"), out bool autoRun) && autoRun;
             hideVoidMessage = bool.TryParse(source.GetValue("hideVoidMessage"), out bool hideMessage) && hideMessage;
-            try { return GeneratorConfig.Build(source, displayName, interval); }
+            try
+            {
+                powerfail = GeneratorConfig.ReadPowerfail(source);
+                return GeneratorConfig.Build(source, displayName, interval);
+            }
             catch (FormatException ex)
             { CTShared.LogError(ex.Message, "ChitakTechGenerator/config"); return null; }
         }
@@ -71,7 +77,12 @@ namespace ChitakTech
             base.FixedUpdate();
             // Retry after the shared engine has refreshed the environment and maintenance.
             // A biome change or power failure may have stopped us during this tick.
-            if (alwaysOn && HighLogic.LoadedSceneIsFlight && enabled && isEnabled
+            if (environmentFailed && HighLogic.LoadedSceneIsFlight && part != null && vessel != null)
+            {
+                var biome = GetEffectiveBiomeConfig();
+                environmentFailed = biome != null && ChitakTechEnvironmentConditions.Destructive(biome, _runtimeData);
+            }
+            if (alwaysOn && !environmentFailed && HighLogic.LoadedSceneIsFlight && enabled && isEnabled
                 && part != null && vessel != null)
                 TryAutoStartGenerator();
         }
@@ -97,6 +108,20 @@ namespace ChitakTech
             Actions["StartConverterAction"].active = Actions["StopConverterAction"].active = !alwaysOn;
         }
         protected override bool TryRunBatch(ChitakTechISRUBiomeConfig biome) => CompleteGeneratorBatch(biome);
+        protected override void OnDestructiveEnvironment()
+        {
+            if (powerfail == ChitakTechISRURecipe.PowerfailResult.Pause && environmentFailed)
+            {
+                statusDisplay = "Paused";
+                return;
+            }
+            environmentFailed = true;
+            CTShared.LogWarning($"{ConverterName} exceeded a destructive limit in {_runtimeData.planet}/{_runtimeData.biome}. "
+                + $"Situation={_runtimeData.sitCon}, altitude={_runtimeData.alt} m, G={_runtimeData.g}, "
+                + $"temperature={_runtimeData.temperature} K, pressure={_runtimeData.pressure} kPa.",
+                "ChitakTechGenerator/environment");
+            TriggerPowerfail(part, powerfail);
+        }
         protected override bool TryResolveRecipeTime(ChitakTechISRUBiomeConfig biome, out double time)
             => PrepareGeneratorBatch(biome, out time);
     }

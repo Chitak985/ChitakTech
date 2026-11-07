@@ -661,8 +661,10 @@ namespace ChitakTech
                         out validationSize, out _);
                     TryReplaceMaterialValuesForValidation(validationOutVolume,
                         out validationOutVolume, out _);
-                    if (!CTMathExpr.TryInterpolate(validationSize, out validationSize,
-                            out string sizeExpressionError))
+                    var unresolved = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                    bool dynamicSize = DependsOnBatchValue(size, unresolved);
+                    if (!CTMathExpr.Interpolate(validationSize, out validationSize,
+                            out string sizeExpressionError, null, null, dynamicSize))
                     {
                         configurationError = true;
                         CTShared.LogError("Recipe \"" + _name + "\": OUTPUT_MATERIAL \""
@@ -679,11 +681,12 @@ namespace ChitakTech
                             parameter.Value, "1");
                         TryReplaceMaterialValuesForValidation(validationValue,
                             out validationValue, out _);
+                        bool dynamicParameter = DependsOnBatchValue(parameter.Value, unresolved);
                         if (!string.Equals(validationValue?.Trim(), "DERIVE",
                                 StringComparison.OrdinalIgnoreCase)
-                            && !CTMathExpr.TryInterpolate(validationValue,
+                            && !CTMathExpr.Interpolate(validationValue,
                                 out validationValue, out string parameterExpressionError,
-                                validationParameters))
+                                validationParameters, null, dynamicParameter))
                         {
                             validParameterExpressions = false;
                             CTShared.LogError("Recipe \"" + _name
@@ -694,14 +697,18 @@ namespace ChitakTech
                             break;
                         }
                         validationParameters[parameter.Key] = validationValue;
+                        if (dynamicParameter || string.Equals(validationValue, "DERIVE", StringComparison.OrdinalIgnoreCase))
+                            unresolved.Add(parameter.Key);
+                        else unresolved.Remove(parameter.Key);
                     }
                     if (!validParameterExpressions)
                     {
                         configurationError = true;
                         continue;
                     }
+                    if (dynamicSize) unresolved.Add("size");
                     if (!TryValidateOutVolumeDefinition(validationOutVolume, validationSize,
-                            validationParameters,
+                            validationParameters, DependsOnBatchValue(outVolume, unresolved),
                             out string outVolumeError))
                     {
                         configurationError = true;
@@ -939,8 +946,19 @@ namespace ChitakTech
                     CultureInfo.InvariantCulture, out value);
         }
 
+        private static bool DependsOnBatchValue(string template, HashSet<string> unresolved)
+        {
+            if (ContainsInputMaterialValue(template) || ContainsOutputMaterialValue(template)
+                || ContainsParallaxValue(template)) return true;
+            if (unresolved.Count == 0 || string.IsNullOrEmpty(template)) return false;
+            foreach (Match segment in Regex.Matches(template, @"\[([^\]]*)\]"))
+                foreach (Match token in Regex.Matches(segment.Groups[1].Value, @"[\p{L}_][\p{L}\p{Nd}_]*"))
+                    if (unresolved.Contains(token.Value)) return true;
+            return false;
+        }
+
         private static bool TryValidateOutVolumeDefinition(string expression, string size,
-            Dictionary<string, string> parameters, out string error)
+            Dictionary<string, string> parameters, bool dependsOnBatch, out string error)
         {
             Dictionary<string, string> variables =
                 new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
@@ -949,15 +967,20 @@ namespace ChitakTech
                 variables[parameter.Key] = parameter.Value;
             variables["size"] = size;
 
+            // A sample INMAT height of 1 can give a negative remainder for a valid cut.
+            // Validate syntax and numeric formatting now; check the actual volume at output.
+            if (dependsOnBatch && !CTMathExpr.Interpolate(expression, out expression, out error,
+                    variables, null, true)) return false;
+
             if (!CTMathExpr.TryInterpolateNumber(expression, out double result,
                     out error, variables))
                 return false;
-            if (result <= 0.0)
+            if (!dependsOnBatch && result <= 0.0)
             {
                 error = "the configured value is non-positive.";
                 return false;
             }
-            if (result > float.MaxValue)
+            if (!dependsOnBatch && result > float.MaxValue)
             {
                 error = "the configured value exceeds the supported per-unit volume.";
                 return false;

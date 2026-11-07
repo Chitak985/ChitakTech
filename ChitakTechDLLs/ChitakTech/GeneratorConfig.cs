@@ -5,6 +5,17 @@ namespace ChitakTech
 {
     internal static class GeneratorConfig
     {
+        internal static ChitakTechISRURecipe.PowerfailResult ReadPowerfail(ConfigNode source)
+        {
+            switch ((source.GetValue("powerfail") ?? "VOID").Trim().ToUpperInvariant())
+            {
+                case "VOID": return ChitakTechISRURecipe.PowerfailResult.Void;
+                case "PAUSE": return ChitakTechISRURecipe.PowerfailResult.Pause;
+                case "MAINT": return ChitakTechISRURecipe.PowerfailResult.Maint;
+                case "EXPLODE": return ChitakTechISRURecipe.PowerfailResult.Explode;
+                default: throw new FormatException("Generator powerfail must be VOID, PAUSE, EXPLODE, or MAINT.");
+            }
+        }
         internal static ConfigNode Build(ConfigNode source, string name, string interval)
         {
             var module = new ConfigNode("MODULE");

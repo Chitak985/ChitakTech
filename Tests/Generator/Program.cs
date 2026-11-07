@@ -68,6 +68,7 @@ namespace ChitakTech
     }
     public class ChitakTechISRURecipe
     {
+        public enum PowerfailResult { Pause, Void, Explode, Maint }
         public struct ResourceOutput { public double amount; }
         public List<ResourceOutput> _outputs = new List<ResourceOutput>(); public double _biomeResourceScale = 1;
         public struct ResourceOutputMaterial { public string name,id,shape,size,outVolume; public double amount; public Dictionary<string,string> parameters; }

@@ -81,6 +81,9 @@ namespace ChitakTech
             }
             else if (type == "ChitakTechGenerator")
             {
+                // Background survival only processes rules that can destroy the vessel.
+                if (!string.Equals(module.GetValue("powerfail")?.Trim(), "EXPLODE",
+                    StringComparison.OrdinalIgnoreCase)) return null;
                 source = new ConfigNode(); module.CopyTo(source);
                 string displayName = module.GetValue("displayName")?.Trim();
                 source.SetValue("name", string.IsNullOrEmpty(displayName) ? "Unknown Generator" : displayName, true);

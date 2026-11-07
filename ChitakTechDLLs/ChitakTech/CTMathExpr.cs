@@ -96,6 +96,11 @@ namespace ChitakTech
         public static bool TryInterpolate(string template, out string result,
             out string error, Dictionary<string, string> vars = null,
             Func<double, double, double> randomFunction = null)
+            => Interpolate(template, out result, out error, vars, randomFunction, false);
+
+        internal static bool Interpolate(string template, out string result,
+            out string error, Dictionary<string, string> vars,
+            Func<double, double, double> randomFunction, bool syntaxOnly)
         {
             result = template;
             error = null;
@@ -128,6 +133,14 @@ namespace ChitakTech
 
                 string expression = template.Substring(opening + 1,
                     closing - opening - 1);
+                if (syntaxOnly)
+                {
+                    if (!TryValidate(expression, (IEnumerable<string>)vars?.Keys ?? Array.Empty<string>(), out error))
+                        return false;
+                    builder.Append('1');
+                    position = closing + 1;
+                    continue;
+                }
                 // A lone string variable can be inserted into a string template. Numeric
                 // consumers still reject it through TryInterpolateNumber/TryEvaluate.
                 if (vars != null && vars.TryGetValue(expression.Trim(), out string literal))

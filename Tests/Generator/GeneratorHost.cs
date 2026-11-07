@@ -29,20 +29,34 @@ public class Controls : Dictionary<string, Control>
 }
 namespace ChitakTech
 {
+    internal class ChitakTechRuntimeData
+    {
+        public string planet = "Kerbin", biome = "Shores", sitCon = "Landed";
+        public double alt = 0, g = 1, temperature = 290, pressure = 100;
+    }
+    internal static class ChitakTechEnvironmentConditions
+    {
+        internal static bool Destructive(ChitakTechISRUBiomeConfig config, object data) => false;
+    }
     internal static class GeneratorConfig
     {
+        internal static ChitakTechISRURecipe.PowerfailResult ReadPowerfail(ConfigNode n)
+            => ChitakTechISRURecipe.PowerfailResult.Void;
         internal static ConfigNode Build(ConfigNode source, string name, string interval) => source;
     }
     public partial class ChitakTechISRU
     {
         public bool enabled = true, isEnabled = true, _fatalConfigError, needsMaintenance;
         public bool maintenanceBlocksRunning, atDeposit = true, environmentAvailable = true, stopDuringNextTick;
-        protected object _runtimeData = new object();
+        private protected ChitakTechRuntimeData _runtimeData = new ChitakTechRuntimeData();
         public CTShared.ChargablePartState state;
         public Controls Events = new Controls(), Actions = new Controls(), Fields = new Controls();
         protected bool CanOperate => !maintenanceBlocksRunning && state != CTShared.ChargablePartState.Off;
         protected bool IsAtRequiredDeposit(ChitakTechISRUBiomeConfig biome) => atDeposit;
-        private ChitakTechISRUBiomeConfig GetEffectiveBiomeConfig() => new ChitakTechISRUBiomeConfig();
+        protected ChitakTechISRUBiomeConfig GetEffectiveBiomeConfig() => new ChitakTechISRUBiomeConfig();
+        public string statusDisplay;
+        protected virtual void OnDestructiveEnvironment() { }
+        protected void TriggerPowerfail(Part p, ChitakTechISRURecipe.PowerfailResult result) { }
         protected virtual ConfigNode GetConverterConfig() => null;
         public virtual void StartConverter()
         {

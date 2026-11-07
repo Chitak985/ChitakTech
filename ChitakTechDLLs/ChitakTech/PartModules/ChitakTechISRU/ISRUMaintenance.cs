@@ -40,7 +40,7 @@ namespace ChitakTech
         private IEnumerable<MaintenanceDefinition> ActiveMaintenance
             => _activeRecipe?.maintenance ?? Enumerable.Empty<MaintenanceDefinition>();
 
-        private ChitakTechISRUBiomeConfig GetEffectiveBiomeConfig()
+        protected ChitakTechISRUBiomeConfig GetEffectiveBiomeConfig()
         {
             if (_activeRecipe == null || _runtimeData == null) return null;
             var biome = _activeRecipe.GetBiomeConfig(_runtimeData.planet, _runtimeData.biome);

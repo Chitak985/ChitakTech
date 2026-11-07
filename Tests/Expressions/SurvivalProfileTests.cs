@@ -27,6 +27,11 @@ internal static class SurvivalProfileTests
         foreach(string type in new[]{"ChitakTechStorage","ChitakTechMaterialStorage","ChitakTechDestructivePart","ChitakTechGenerator"})
         {
             var m=new ConfigNode();m.AddValue("name",type);var b=Biome(m,"ALL","ALL","100");
+            if(type=="ChitakTechGenerator")
+            {
+                Check(SurvivalProfile.Create(m,saved,globals,"test")==null,"default generator VOID cannot destroy an unloaded vessel");
+                m.AddValue("powerfail","EXPLODE");
+            }
             b.AddValue("maxOperatingAltitude",1);b.AddValue("disabled",true);b.AddValue("volumeMul",2);
             var profile=SurvivalProfile.Create(m,saved,globals,"test");var result=profile.At(data);
             Check(result.config.GetValue("maxAltitude")=="100","survival profile exists for "+type);

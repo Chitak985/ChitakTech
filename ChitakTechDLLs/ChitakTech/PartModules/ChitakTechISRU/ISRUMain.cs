@@ -72,6 +72,11 @@ namespace ChitakTech
             _animationPlaying = playing;
         }
 
+        protected virtual void OnDestructiveEnvironment()
+        {
+            TriggerPowerfail(GetPowerfailContextPart(), ChitakTechISRURecipe.PowerfailResult.Explode);
+        }
+
         ///// Powerfail /////
         /// <summary>
         /// Applies a powerfail result against the current batch. PAUSE leaves the batch and
@@ -1690,7 +1695,7 @@ namespace ChitakTech
             // One hundred and one ways to explode
             if (ChitakTechEnvironmentConditions.Destructive(biomeConfig, _runtimeData))
             {
-                TriggerPowerfail(GetPowerfailContextPart(), ChitakTechISRURecipe.PowerfailResult.Explode);
+                OnDestructiveEnvironment();
                 return true;
             }
 
@@ -2497,15 +2502,6 @@ randomFunction))
                             "ChitakTechISRU/TryTransferMaterialOutputBuffer", out double perUnitVolume,
 randomFunction))
                         break;
-                    if (double.IsNaN(perUnitVolume) || double.IsInfinity(perUnitVolume) || perUnitVolume <= 0.0
-                        || perUnitVolume > float.MaxValue)
-                    {
-                        CTShared.LogError(
-                            "Converter \"" + ConverterName + "\": OUTPUT_MATERIAL \"" + matOutput.name
-                            + "\" produced an invalid per-unit volume.",
-                            "ChitakTechISRU/TryTransferMaterialOutputBuffer");
-                        break;
-                    }
 
                     instance.volume = (float)perUnitVolume;
                     instance.UpdateParams(

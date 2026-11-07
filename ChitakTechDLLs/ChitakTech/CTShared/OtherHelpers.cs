@@ -152,7 +152,12 @@ namespace ChitakTech
                     + "\" failed to resolve: " + err, logContext);
                 return false;
             }
-
+            if (result > float.MaxValue || (float)result <= 0f)
+            {
+                LogError("outVolume \"" + rawExpr + "\" resolved to " + result
+                    + ", outside the positive per-unit volume range.", logContext);
+                return false;
+            }
             return true;
         }
 

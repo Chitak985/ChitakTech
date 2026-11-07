@@ -9,6 +9,14 @@ internal static class GeneratorRecipeTests
         int count = 0;
         void Check(bool ok, string why) { count++; if (!ok) throw new Exception(why + ": " + string.Join("; ", CTShared.Errors)); }
         var module = new ConfigNode("MODULE");
+        Check(GeneratorConfig.ReadPowerfail(module) == ChitakTechISRURecipe.PowerfailResult.Void,
+            "missing generator powerfail defaults to VOID");
+        foreach (var mode in new[] { "PAUSE", "VOID", "MAINT", "EXPLODE" })
+        {
+            module.SetValue("powerfail", mode, true);
+            Check(GeneratorConfig.ReadPowerfail(module).ToString().ToUpperInvariant() == mode,
+                "generator accepts " + mode);
+        }
         var output = new ConfigNode("OUTPUT_RESOURCE"); module.AddNode(output);
         output.AddValue("name", "Water"); output.AddValue("amount", "2 * solarMultiplier * (SETTING:rate)");
         var setting = new ConfigNode("SETTING"); module.AddNode(setting);
